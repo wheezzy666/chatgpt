@@ -52,6 +52,31 @@ $('login-form').addEventListener('submit',async e=>{
  try{await api(isSetup?'/api/admin/setup':'/api/admin/login','POST',{username:$('admin-name').value,password:$('admin-pass').value,setupToken:$('setup-key').value});isSetup=false;await showAdmin()}
  catch(e){error(e)}finally{$('login-btn').disabled=false}
 });
+
+$('recover-toggle').addEventListener('click',()=>{
+ const area=$('recover-area');
+ const isClosed=area.classList.contains('hidden');
+ area.classList.toggle('hidden',!isClosed);
+ $('login-form').classList.toggle('hidden',isClosed);
+ $('recover-toggle').textContent=isClosed?'← Назад ко входу':'Нет доступа? Восстановить администратора';
+});
+$('recover-form').addEventListener('submit',async event=>{
+ event.preventDefault();
+ $('recover-error').classList.add('hidden');
+ const btn=$('recover-submit');btn.disabled=true;
+ try{
+   await api('/api/admin/recover','POST',{
+     setupToken:$('recover-secret').value,
+     username:$('recover-username').value,
+     password:$('recover-password').value,
+     confirm:'RESET_ADMIN_ONLY'
+   });
+   $('recover-secret').value='';
+   $('recover-password').value='';
+   await showAdmin();
+ }catch(e){error(e,'recover-error')}
+ finally{btn.disabled=false}
+});
 async function showAdmin(){
  $('auth').classList.add('hidden');$('app').classList.remove('hidden');
  try{const data=await api('/api/admin/models');models=data.models;
