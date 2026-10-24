@@ -1093,7 +1093,9 @@
           if(!validInt(slot,0,2)||!validInt(template,0,MISSION_POOL.length-1)||!validInt(goal,1,100)||!validInt(reward,0,100000000))return false;
           if(!Array.isArray(game.missions))game.missions=missionsInit();
           const base=MISSION_POOL[template];
-          game.missions[slot]={...base,uid:id(),goal,reward,progress:0,done:false};
+          const objective={buy:'покупок автомобилей',inspect:'диагностик',fix:'ремонтов или обслуживаний',sell:'продаж автомобилей',day:'переходов на новый игровой день'};
+          const text=goal===base.goal?base.text:'Цель: '+goal+' '+(objective[base.kind]||'действий');
+          game.missions[slot]={...base,uid:id(),goal,reward,progress:0,done:false,text};
           detail='Контракт '+(slot+1)+': '+base.title+' ('+goal+'), награда '+fmt(reward);break;
         }
         default:return false;
