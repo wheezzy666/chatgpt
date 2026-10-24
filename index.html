@@ -218,6 +218,27 @@
     @media(max-width:355px){.profile-avatar.large{width:72px;height:72px;font-size:36px}.avatar-grid{gap:4px}.avatar-choice{min-height:40px;font-size:21px}.bottom-nav{padding-left:3px;padding-right:3px}.navitem{font-size:8px}}
     #theme-settings{scroll-margin-top:calc(16px + env(safe-area-inset-top))}
     @media(max-width:385px){.header-right{gap:3px}.brand{gap:7px}.levelpill,.daypill{padding:6px}.theme-shortcut{width:30px;height:30px;flex-basis:30px}}
+
+    /* Экран загрузки: только иконки и видимые фото, без блокировки на медленной сети */
+    .boot-screen,.maintenance-screen{position:fixed;inset:0;z-index:100;display:flex;align-items:center;justify-content:center;
+      padding:calc(24px + env(safe-area-inset-top)) 22px calc(24px + env(safe-area-inset-bottom));
+      background:var(--bg);color:var(--text);text-align:center}
+    .boot-screen{transition:opacity .22s ease,visibility .22s ease}
+    .boot-screen.is-hidden{opacity:0;visibility:hidden;pointer-events:none}
+    .boot-logo{width:83px;height:83px;border-radius:25px;margin:0 auto 20px;background:var(--surface2);border:1px solid var(--line);
+      display:grid;place-items:center;font-size:42px;box-shadow:0 14px 55px #0003}
+    .boot-title{font-size:26px;font-weight:900;margin:0 0 8px}
+    .boot-description{color:var(--muted);font-size:13px;line-height:1.5;margin:0 0 25px}
+    .boot-progress{height:8px;border-radius:30px;overflow:hidden;background:var(--surface2);border:1px solid var(--line)}
+    .boot-progress>span{display:block;background:var(--lime);height:100%;width:5%;border-radius:30px;transition:width .18s ease}
+    .boot-status{margin-top:11px;color:var(--muted);font-size:12px;min-height:18px}
+    .maintenance-screen[hidden],.boot-screen[hidden]{display:none!important}
+    .maintenance-screen{z-index:110}
+    .maintenance-card{width:min(100%,390px);padding:26px 18px;border-radius:22px;background:var(--surface);border:1px solid var(--line)}
+    .maintenance-card p{font-size:14px;line-height:1.55;color:var(--muted);margin:10px 0 19px}
+    .maintenance-card .btn{min-width:190px}
+    .sheet{overflow-anchor:none}
+    .wrap{overflow-anchor:none}
   </style>
 </head>
 <body>
@@ -238,6 +259,24 @@
   <nav class="bottom-nav" id="nav" aria-label="Главное меню"></nav>
   <div id="overlay-root"></div>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <div id="boot-screen" class="boot-screen" role="status" aria-live="polite" aria-label="Загрузка игры">
+    <div style="width:min(100%,350px)">
+      <div class="boot-logo" aria-hidden="true">🚗</div>
+      <h2 class="boot-title">ПЕРЕКУП</h2>
+      <p class="boot-description">Подготавливаем гараж, авторынок и фотографии машин</p>
+      <div class="boot-progress" aria-hidden="true"><span id="boot-progress"></span></div>
+      <div class="boot-status" id="boot-status">Запускаем игру…</div>
+    </div>
+  </div>
+  <div id="maintenance-screen" class="maintenance-screen" hidden role="alertdialog" aria-modal="true" aria-label="Технические работы">
+    <div class="maintenance-card">
+      <div class="boot-logo" aria-hidden="true">🛠️</div>
+      <h2 class="boot-title">Технические работы</h2>
+      <p id="maintenance-message">Обновляем игру. Покупки и сохранения не потеряются. Попробуй зайти немного позже.</p>
+      <button class="btn btn-primary" data-action="retry-maintenance">🔄 Проверить доступность</button>
+    </div>
+  </div>
+
   <script>
   (()=>{
     'use strict';
@@ -980,21 +1019,60 @@
        <div class="section-head"><h2>⚙️ Настройки</h2></div><div class="card"><div class="notice" style="margin:0 0 12px"><div class="symbol">📲</div><div><strong>Добавить на iPhone</strong><p>Открой опубликованную игру в Safari → «Поделиться» → «На экран Домой». Прогресс сохраняется в этом браузере.</p></div></div><button class="btn btn-secondary btn-block" data-action="export-save">📤 Сохранить копию прогресса</button><label for="load-backup" class="btn btn-outline btn-block" style="margin-top:9px;cursor:pointer">📥 Восстановить прогресс</label><input id="load-backup" type="file" accept=".json,application/json" style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none"><button class="btn btn-outline btn-block" style="margin-top:9px" data-action="reset-ask">Начать новую игру</button></div>
       <div class="footertext">«Симулятор перекупа» — фанатская игра. Фото: Wikimedia Commons, с указанием автора и лицензии. Изображения демонстрируют модель, но не конкретный игровой автомобиль. Названия моделей принадлежат правообладателям. Цены и события вымышлены.</div></main>`;
     }
+
+    // Safari/iOS: сохраняем и позицию страницы, и прокрутку текущей шторки.
+    let lockedPageY=null, renderedSheetKey='',tabPositions={home:0},desiredPageY=null;
+    function pageY(){return lockedPageY===null?(window.scrollY||window.pageYOffset||0):lockedPageY}
+    function setPageY(y){
+      y=Math.max(0,Number(y)||0);
+      if(lockedPageY!==null){lockedPageY=y;document.body.style.top='-'+y+'px';return}
+      try{window.scrollTo(0,y)}catch(e){}
+    }
+    function lockPage(){
+      if(lockedPageY!==null)return;
+      lockedPageY=pageY();
+      document.body.style.position='fixed';
+      document.body.style.top='-'+lockedPageY+'px';
+      document.body.style.left='0';
+      document.body.style.right='0';
+      document.body.style.width='100%';
+    }
+    function unlockPage(){
+      if(lockedPageY===null)return;
+      const y=lockedPageY;
+      lockedPageY=null;
+      document.body.style.position='';
+      document.body.style.top='';
+      document.body.style.left='';
+      document.body.style.right='';
+      document.body.style.width='';
+      setPageY(y);
+      // В Safari восстановление после разблокировки body может пройти на следующем кадре.
+      if(typeof requestAnimationFrame==='function')requestAnimationFrame(()=>{if(lockedPageY===null)setPageY(y)});
+    }
     function render(){
-      const y=window.scrollY;
+      const y=pageY();
       document.getElementById('app').innerHTML=header()+({home,market,garage,tools,world,career,profile}[tab]||home)();
       document.getElementById('nav').innerHTML=[['home','Главная','home'],['market','Рынок','market'],['garage','Гараж','garage'],['tools','СТО','tools'],['world','Мир','world'],['career','Карьера','career'],['profile','Профиль','profile']].map(([key,label,ic])=>`<button class="navitem ${tab===key?'active':''}" data-action="go" data-value="${key}" aria-label="${label}" aria-current="${tab===key?'page':'false'}">${ico(ic)}<span>${label}</span>${key==='garage'&&game.inventory.some(o=>o.buyerOffer)?'<span class="nav-bubble">!</span>':''}</button>`).join('');
       renderModal();
       hydratePhotos();
-      try { window.scrollTo(0,y); } catch (_) {}
+      setPageY(y);
     }
     function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
-    function showTab(t){tab=t;modal=null;searchTerm='';render();window.scrollTo(0,0)}
+    function showTab(t){
+      tabPositions[tab]=pageY();
+      if(modal){modal=null;renderModal()}
+      tab=t;searchTerm='';render();
+      setPageY(tabPositions[t]||0);
+    }
     function openModal(type,cid){modal={type,id:cid};renderModal()}
     function closeModal(){modal=null;renderModal()}
     function renderModal(){
       const root=document.getElementById('overlay-root');
-      if(!modal){root.innerHTML='';document.body.style.overflow='';return}
+      if(!modal){root.innerHTML='';renderedSheetKey='';unlockPage();return}
+      const sheetKey=modal.type+':'+(modal.id??modal.value??'');
+      const previousSheet=root.querySelector('.sheet');
+      const savedSheetTop=renderedSheetKey===sheetKey&&previousSheet?previousSheet.scrollTop:0;
       let body='';
       if(modal.type==='offer'){
         const o=findOffer(modal.id);if(!o){closeModal();return}
@@ -1050,8 +1128,11 @@
       }else if(modal.type==='reset'){
         body=`<div class="sheet-top"><div><div class="label">НОВАЯ ИГРА</div><h2>Начать всё сначала?</h2></div><button class="close" data-action="close">×</button></div><p class="muted">Деньги, покупки, улучшения гаража и достижения будут сброшены. Это действие нельзя отменить без резервной копии.</p><div class="sheet-foot"><button class="btn btn-warn btn-block" data-action="reset-game">Сбросить прогресс</button><button class="btn btn-secondary btn-block" data-action="close">Отмена</button></div>`;
       }
+      lockPage();
       root.innerHTML=`<div class="overlay" data-action="backdrop"><section class="sheet" role="dialog" aria-modal="true"><div class="handle"></div>${body}</section></div>`;
-      document.body.style.overflow='hidden';
+      renderedSheetKey=sheetKey;
+      const sheet=root.querySelector('.sheet');
+      if(sheet&&savedSheetTop)sheet.scrollTop=savedSheetTop;
       hydratePhotos();
     }
     function nextDay(){
@@ -1177,7 +1258,7 @@
       if(type==='confirm-upgrade'){modal={type:'confirm',value:v};renderModal();return}
       if(type==='upgrade')return upgrade(v);
       if(type==='reset-ask'){openModal('reset');return}
-      if(type==='reset-game'){newGame();tab='home';closeModal();render();window.scrollTo(0,0);notice('Новая игра началась!');return}
+      if(type==='reset-game'){newGame();tabPositions={home:0};tab='home';closeModal();render();notice('Новая игра началась!');return}
       if(type==='export-save')return exportGame();
     }
     document.addEventListener('click', e=>{const btn=e.target.closest('[data-action="retry-photo"]');if(!btn)return;e.preventDefault();e.stopImmediatePropagation();const k=Number(btn.dataset.model);exhaustedPhotos.delete(k);delete photoLibrary[k];document.querySelectorAll('[data-photo-model="'+k+'"]').forEach(el=>{el.dataset.loaded='0';el.classList.remove('photo-ready','photo-missing');el.innerHTML='<span class="photo-loading">📷<small>Повторная загрузка...</small></span>'});enqueuePhoto(k);},true);
@@ -1189,7 +1270,7 @@
         const parsed=JSON.parse(await e.target.files[0].text());
         if(!parsed.game||parsed.game.version!==1||!Array.isArray(parsed.game.inventory)||!Array.isArray(parsed.game.market)||!Number.isFinite(parsed.game.money)||!Number.isFinite(parsed.game.day)||!Array.isArray(parsed.game.missions))throw new Error('invalid');
         game=parsed.game;nextId=Math.max(parsed.nextId||1,1,...game.market.map(x=>x.id+1),...game.inventory.map(x=>x.id+1),...game.missions.map(x=>x.uid+1));
-        migrateSocial();migrateWorld();tab='home';modal=null;save();render();window.scrollTo(0,0);notice('✅ Прогресс восстановлен!');
+        migrateSocial();migrateWorld();tabPositions={home:0};tab='home';modal=null;renderModal();save();render();notice('✅ Прогресс восстановлен!');
       }catch(err){notice('Этот файл не подходит для восстановления.',true)}
       e.target.value='';
     });
