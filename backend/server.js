@@ -14,6 +14,43 @@ const pool=dbUrl?new Pool({connectionString:dbUrl,max:6,connectionTimeoutMillis:
 const adminHtml=fs.readFileSync(path.join(__dirname,'admin.html'));
 const modelText=fs.readFileSync(path.join(__dirname,'../index.html'),'utf8');
 const models=Array.from(modelText.matchAll(/\['([^']+)','([^']+)',(\d+),'(sedan|suv|hatch|coupe|wagon)',([0-3])\]/g)).map((m,i)=>({id:i,name:m[1]==='3'||m[1]==='6'?m[1]:m[1],brand:m[1],model:m[2],price:Number(m[3]),body:m[4],tier:Number(m[5])}));
+
+const ADMIN_META={
+ garages:['Старый гараж · 2 места','Гараж с пристройкой · 4 места','Автобокс · 7 мест','Автоцентр · 10 мест','Автокомплекс · 16 мест'],
+ workshops:['Без своей СТО','Свой подъёмник · скидка 14%','Полноценная СТО · скидка 29%','СТО премиум · скидка 44%'],
+ showrooms:['Гараж без витрины','Выставочная площадка','Автосалон','Премиальный автоцентр'],
+ staff:[{id:'mechanic',name:'Механик'},{id:'sales',name:'Менеджер по продажам'},{id:'expert',name:'Эксперт по VIN'}],
+ missions:[
+  {title:'Заключи сделку',kind:'buy',goal:1,reward:27000},
+  {title:'Проверка документов',kind:'inspect',goal:2,reward:16000},
+  {title:'Мастер на все руки',kind:'fix',goal:1,reward:23000},
+  {title:'Счастливый покупатель',kind:'sell',goal:1,reward:37000},
+  {title:'Пополнить автопарк',kind:'buy',goal:2,reward:44000},
+  {title:'Работа кипит',kind:'fix',goal:3,reward:46000},
+  {title:'Рабочая неделя',kind:'day',goal:3,reward:25000},
+  {title:'Удачный оборот',kind:'sell',goal:2,reward:68000}
+ ]
+};
+function validateAdminControl(b){
+ if(!b||typeof b.kind!=='string')return null;
+ const intIn=(v,a,z)=>Number.isSafeInteger(v)&&v>=a&&v<=z;
+ const v=b.value;
+ switch(b.kind){
+  case 'day':if(intIn(v,1,100000))return {kind:'day',value:v};break;
+  case 'level':if(intIn(v,1,1000))return {kind:'level',value:v};break;
+  case 'garage':if(intIn(v,0,ADMIN_META.garages.length-1))return {kind:'garage',value:v};break;
+  case 'workshop':if(intIn(v,0,ADMIN_META.workshops.length-1))return {kind:'workshop',value:v};break;
+  case 'showroom':if(intIn(v,0,ADMIN_META.showrooms.length-1))return {kind:'showroom',value:v};break;
+  case 'slots':if(intIn(v,1,50))return {kind:'slots',value:v};break;
+  case 'staff':if(ADMIN_META.staff.some(s=>s.id===b.staff)&&typeof b.enabled==='boolean')return {kind:'staff',staff:b.staff,enabled:b.enabled};break;
+  case 'mission':
+   if(intIn(b.slot,0,2)&&intIn(b.template,0,ADMIN_META.missions.length-1)&&intIn(b.goal,1,100)&&intIn(b.reward,0,100000000))
+    return {kind:'mission',slot:b.slot,template:b.template,goal:b.goal,reward:b.reward};
+   break;
+ }
+ return null;
+}
+
 const attempts=new Map();
 let dbReady=false,dbError='';
 function respond(res,status,obj,extra={}){res.writeHead(status,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff',...extra});res.end(JSON.stringify(obj))}
@@ -116,16 +153,17 @@ async function route(req,res){
   if(p==='/api/admin/me'&&method==='GET')return respond(res,200,{ok:true});
   if(p==='/api/admin/logout'&&method==='POST'){const c=String(req.headers.cookie||'').match(/perekup_admin=([a-f0-9]{64})/);if(c)await pool.query("DELETE FROM sessions WHERE hash=$1",[sha(c[1])]);return respond(res,200,{ok:true},{'Set-Cookie':'perekup_admin=; Path=/; Max-Age=0; Secure; HttpOnly; SameSite=Lax'})}
   if(p==='/api/admin/models'&&method==='GET')return respond(res,200,{models});
+  if(p==='/api/admin/meta'&&method==='GET')return respond(res,200,ADMIN_META);
   if(p==='/api/admin/players'&&method==='GET'){
    const q=String(url.searchParams.get('q')||'').slice(0,60),players=await pool.query("SELECT id,username,game,revision,last_seen FROM players WHERE username ILIKE $1 OR coalesce(game->'profile'->>'nickname','') ILIKE $1 ORDER BY last_seen DESC LIMIT 150",['%'+q+'%']);
    const ids=players.rows.map(x=>x.id), events=ids.length?await pool.query("SELECT player_id,id,type,payload FROM admin_actions WHERE player_id=ANY($1::uuid[]) ORDER BY id ASC",[ids]):{rows:[]};
    const list=players.rows.map(row=>{
     const last=Number(row.game._adminSeq)||0,pend=events.rows.filter(e=>e.player_id===row.id&&Number(e.id)>last);
-    return {id:row.id,username:row.username,nickname:row.game.profile?.nickname||row.username,money:Number(row.game.money)||0,pendingDelta:pend.filter(e=>e.type==='balance').reduce((s,e)=>s+Number(e.payload.amount),0),pendingDeals:pend.filter(e=>e.type==='deal').length,day:row.game.day,sold:row.game.sold||0,rev:row.revision,lastSeen:row.last_seen}
+    return {id:row.id,username:row.username,nickname:row.game.profile?.nickname||row.username,money:Number(row.game.money)||0,pendingDelta:pend.filter(e=>e.type==='balance').reduce((s,e)=>s+Number(e.payload.amount),0),pendingDeals:pend.filter(e=>e.type==='deal').length,pendingCount:pend.length,day:row.game.day,sold:row.game.sold||0,rev:row.revision,lastSeen:row.last_seen}
    });
    return respond(res,200,{players:list});
   }
-  const match=/^\/api\/admin\/players\/([a-f0-9-]{36})(?:\/(balance|deal))?$/.exec(p);
+  const match=/^\/api\/admin\/players\/([a-f0-9-]{36})(?:\/(balance|deal|control))?$/.exec(p);
   if(match){
    const id=match[1];const player=await pool.query("SELECT id,username,game,revision,last_seen FROM players WHERE id=$1",[id]);if(!player.rows.length)return textResponse(res,404,'Игрок не найден');
    if(method==='GET'&&!match[2]){
@@ -138,6 +176,9 @@ async function route(req,res){
       const amount=Number(b.amount);
       if(!Number.isSafeInteger(amount)||amount===0||Math.abs(amount)>100000000)return textResponse(res,400,'Сумма должна быть от −100 000 000 до 100 000 000 ₽');
       payload={amount};
+    }else if(type==='control'){
+      payload=validateAdminControl(b);
+      if(!payload)return textResponse(res,400,'Недопустимая команда: проверь пределы и параметры.');
     }else{
       const modelId=Number(b.modelId),price=Number(b.price),year=Number(b.year),mileage=Number(b.mileage),condition=Number(b.condition);
       if(!Number.isInteger(modelId)||modelId<0||modelId>=models.length||!Number.isSafeInteger(price)||price<1000||price>500000000||!Number.isInteger(year)||year<1980||year>2026||!Number.isInteger(mileage)||mileage<0||mileage>1000000||!Number.isInteger(condition)||condition<10||condition>100)return textResponse(res,400,'Проверь параметры автомобиля');
