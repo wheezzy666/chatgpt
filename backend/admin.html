@@ -22,12 +22,50 @@
 <div id="details" class="hidden"><div class="panel"><div class="detail-top"><div><h2 id="selected-name"></h2><p id="selected-info" class="muted" style="margin:6px 0 0"></p></div><span id="selected-money" class="pill"></span></div></div>
 <div class="columns"><div class="panel"><h2>💰 Изменить баланс</h2><p class="note">Плюс добавляет деньги, минус списывает. Действие попадёт в журнал и дойдёт до игрока при синхронизации.</p><div class="field"><label for="amount">Сумма в рублях</label><input id="amount" type="number" min="1" max="100000000" step="1000" value="100000"></div><div class="balance-controls"><button id="add-money" class="btn">＋ Добавить</button><button id="remove-money" class="btn danger">－ Списать</button></div></div>
 <div class="panel"><h2>🚘 Создать личную сделку</h2><p class="note">Автомобиль появится на авторынке выбранного игрока. Его можно осмотреть, поторговаться и купить.</p><div class="field"><label for="model">Марка и модель</label><select id="model"></select></div><div class="columns" style="gap:8px"><div class="field"><label for="car-price">Цена ₽</label><input id="car-price" type="number" min="1000" max="500000000" step="1000" value="350000"></div><div class="field"><label for="car-year">Год</label><input id="car-year" type="number" min="1980" max="2026" value="2015"></div><div class="field"><label for="car-mileage">Пробег, км</label><input id="car-mileage" type="number" min="0" max="1000000" value="85000"></div><div class="field"><label for="car-condition">Состояние, 10–100</label><input id="car-condition" type="number" min="10" max="100" value="82"></div></div><button id="send-deal" class="btn">📨 Отправить сделку</button></div>
+
+<div class="panel"><h2>📅 День и уровень игрока</h2>
+  <p class="note">Установи номер игрового дня или уровень. Изменение дня само по себе не запускает игровые события.</p>
+  <div class="field"><label for="admin-day">Игровой день (1–100 000)</label><input id="admin-day" type="number" min="1" max="100000" step="1" value="1"></div>
+  <button class="btn alt" type="button" data-control="day" data-source="admin-day">Установить день</button>
+  <div class="field" style="margin-top:17px"><label for="admin-level">Уровень игрока (1–1000)</label><input id="admin-level" type="number" min="1" max="1000" step="1" value="1"></div>
+  <button class="btn alt" type="button" data-control="level" data-source="admin-level">Установить уровень</button>
+</div>
+<div class="panel"><h2>🏠 Гараж и места</h2>
+  <p id="current-garage" class="note">Текущая вместимость появится после выбора игрока.</p>
+  <div class="field"><label for="admin-garage">Уровень гаража</label><select id="admin-garage"></select></div>
+  <button class="btn alt" type="button" data-control="garage" data-source="admin-garage">Изменить гараж</button>
+  <div class="field" style="margin-top:17px"><label for="admin-slots">Добавить машиноместа (1–50 за раз)</label><input id="admin-slots" type="number" min="1" max="50" step="1" value="2"></div>
+  <button class="btn alt" type="button" data-control="slots" data-source="admin-slots">➕ Добавить места</button>
+  <p class="note">Дополнительно можно выдать до 100 машиномест сверх уровня гаража.</p>
+</div>
+<div class="panel"><h2>🔧 СТО и автосалон</h2>
+  <p class="note">Можешь сразу открыть нужную ступень. При команде администратора игровая валюта не списывается.</p>
+  <div class="field"><label for="admin-workshop">Уровень СТО</label><select id="admin-workshop"></select></div>
+  <button class="btn alt" type="button" data-control="workshop" data-source="admin-workshop">Изменить СТО</button>
+  <div class="field" style="margin-top:17px"><label for="admin-showroom">Уровень автосалона</label><select id="admin-showroom"></select></div>
+  <button class="btn alt" type="button" data-control="showroom" data-source="admin-showroom">Изменить автосалон</button>
+</div>
+<div class="panel"><h2>👨‍🔧 Управление работниками</h2>
+  <p class="note">Нанимай или увольняй механика, менеджера и VIN-эксперта. Зарплата продолжит списываться каждый игровой день.</p>
+  <div id="admin-staff-controls" class="audit"></div>
+</div>
+<div class="panel wide"><h2>🎯 Квесты карьеры</h2>
+  <p class="note">Замени один из трёх активных контрактов игрока. Новое задание начинается с нулевого прогресса.</p>
+  <div class="columns" style="gap:11px">
+    <div class="field"><label for="admin-mission-slot">Какой контракт изменить</label><select id="admin-mission-slot"><option value="0">1-й квест</option><option value="1">2-й квест</option><option value="2">3-й квест</option></select></div>
+    <div class="field"><label for="admin-mission-template">Новое задание</label><select id="admin-mission-template"></select></div>
+    <div class="field"><label for="admin-mission-goal">Количество действий (1–100)</label><input id="admin-mission-goal" type="number" min="1" max="100" step="1" value="1"></div>
+    <div class="field"><label for="admin-mission-reward">Награда, ₽</label><input id="admin-mission-reward" type="number" min="0" max="100000000" step="1000" value="27000"></div>
+  </div>
+  <button id="admin-mission-apply" class="btn" type="button">📋 Заменить квест</button>
+  <div id="current-missions" class="audit" style="margin-top:14px"></div>
+</div>
 <div class="panel wide"><h2>📋 Журнал команд</h2><div id="action-history" class="audit"></div></div>
 </div></div><div id="toast" class="toast hidden"></div></div></section>
 <script>
 'use strict';
 const $=x=>document.getElementById(x);
-let selected=null,players=[],models=[],isSetup=false;
+let selected=null,players=[],models=[],adminMeta=null,selectedPlayerGame=null,isSetup=false;
 const money=x=>(Math.round(Number(x)||0)).toLocaleString('ru-RU')+' ₽';
 const safe=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 async function api(url,method='GET',body){
@@ -79,9 +117,16 @@ $('recover-form').addEventListener('submit',async event=>{
 });
 async function showAdmin(){
  $('auth').classList.add('hidden');$('app').classList.remove('hidden');
- try{const data=await api('/api/admin/models');models=data.models;
+ try{
+ const [data,meta]=await Promise.all([api('/api/admin/models'),api('/api/admin/meta')]);
+ models=data.models;adminMeta=meta;
  $('model').innerHTML=models.map(m=>'<option value="'+m.id+'">'+safe(m.brand+' '+m.model)+'</option>').join('');
  $('model').value='1';setModelDefaults();
+ [['admin-garage',meta.garages],['admin-workshop',meta.workshops],['admin-showroom',meta.showrooms]].forEach(([id,labels])=>{
+   $(id).innerHTML=labels.map((name,index)=>'<option value="'+index+'">'+(index+1)+'. '+safe(name)+'</option>').join('');
+ });
+ $('admin-mission-template').innerHTML=meta.missions.map((mission,index)=>'<option value="'+index+'">'+safe(mission.title)+'</option>').join('');
+ fillMissionDefaults();
  await loadPlayers()
  }catch(e){toast(e.message)}
 }
@@ -91,8 +136,8 @@ async function loadPlayers(){try{
  const result=await api('/api/admin/players?q='+encodeURIComponent($('search').value.trim()));players=result.players||[];
  $('count-players').textContent=players.length;
  $('count-money').textContent=(players.reduce((sum,p)=>sum+p.money+p.pendingDelta,0)/1000000).toLocaleString('ru-RU',{maximumFractionDigits:1})+' млн';
- $('count-pending').textContent=players.reduce((sum,p)=>sum+p.pendingDeals+(p.pendingDelta!==0?1:0),0);
- $('player-list').innerHTML=players.length?players.map(p=>'<tr data-id="'+p.id+'" class="'+(selected===p.id?'selected':'')+'"><td><span class="nickname">'+safe(p.nickname)+'</span><small>@'+safe(p.username)+'</small></td><td>'+money(p.money+p.pendingDelta)+'</td><td>'+p.day+'</td><td>'+p.sold+'</td><td>'+(p.pendingDeals||p.pendingDelta?'⏳ Ожидают':'✓ Готово')+'</td><td>'+new Date(p.lastSeen).toLocaleString('ru-RU')+'</td></tr>').join(''):'<tr><td colspan="6" class="muted">Игроков пока нет. Подключи онлайн-аккаунт в игре.</td></tr>';
+ $('count-pending').textContent=players.reduce((sum,p)=>sum+(p.pendingCount||0),0);
+ $('player-list').innerHTML=players.length?players.map(p=>'<tr data-id="'+p.id+'" class="'+(selected===p.id?'selected':'')+'"><td><span class="nickname">'+safe(p.nickname)+'</span><small>@'+safe(p.username)+'</small></td><td>'+money(p.money+p.pendingDelta)+'</td><td>'+p.day+'</td><td>'+p.sold+'</td><td>'+(p.pendingCount?'⏳ '+p.pendingCount:'✓ Готово')+'</td><td>'+new Date(p.lastSeen).toLocaleString('ru-RU')+'</td></tr>').join(''):'<tr><td colspan="6" class="muted">Игроков пока нет. Подключи онлайн-аккаунт в игре.</td></tr>';
  if(selected&&players.some(p=>p.id===selected))await showPlayer(selected)
 }catch(e){toast(e.message)}}
 async function showPlayer(id){selected=id;
@@ -101,12 +146,93 @@ async function showPlayer(id){selected=id;
  $('selected-name').textContent=p.game.profile?.nickname||p.username;
  $('selected-info').textContent='@'+p.username+' · День '+p.game.day+' · Продано '+(p.game.sold||0)+' авто · ID '+p.id;
  $('selected-money').textContent=money(p.game.money);
+ selectedPlayerGame=p.game;
+ $('admin-day').value=p.game.day;
+ $('admin-level').value=Math.floor((p.game.xp||0)/180)+1;
+ $('admin-garage').value=p.game.garageTier||0;
+ $('admin-workshop').value=p.game.workshopTier||0;
+ $('admin-showroom').value=p.game.showroomTier||0;
+ const tier=p.game.garageTier||0;
+ const slots=[2,4,7,10,16][tier]||2,extra=p.game.extraGarageSlots||0;
+ $('current-garage').textContent='Текущий гараж: '+(tier+1)+'/5 · '+(slots+extra)+' мест (дополнительно '+extra+').';
+ $('admin-staff-controls').innerHTML=adminMeta.staff.map(s=>{
+   const hired=(p.game.staff||[]).includes(s.id);
+   return '<article><span><strong>'+safe(s.name)+'</strong><small style="display:block">'+(hired?'🟢 Работает':'⚪ Не нанят')+'</small></span>'+
+     '<button class="btn '+(hired?'danger':'alt')+' compact" type="button" data-staff="'+s.id+'" data-enabled="'+(!hired)+'">'+(hired?'Уволить':'Нанять')+'</button></article>';
+ }).join('');
+ renderMissions(p.game);
+
  $('action-history').innerHTML=result.history.length?result.history.map(a=>{
- const detail=a.type==='balance'?(Number(a.payload.amount)>0?'Добавлено ':'Списано ')+money(Math.abs(a.payload.amount)):'Персональная сделка: '+(models.find(m=>m.id===a.payload.modelId)?.model||'Автомобиль')+' · '+money(a.payload.price);
- return '<article><span>'+safe(detail)+'</span><small>'+new Date(a.created_at).toLocaleString('ru-RU')+'</small></article>'
+ const detail=historyTitle(a);
+ const applied=Number(a.id)<=Number(p.game._adminSeq||0);
+
+ return '<article><span>'+safe(detail)+'<small style="display:block">'+(applied?'✓ Применено':'⏳ Ожидает игрока')+'</small></span><small>'+new Date(a.created_at).toLocaleString('ru-RU')+'</small></article>'
  }).join(''):'<p class="muted">Команд ещё не было.</p>';
  document.querySelectorAll('#player-list tr').forEach(tr=>tr.classList.toggle('selected',tr.dataset.id===id));
 }
+
+function fillMissionDefaults(){
+ if(!adminMeta)return;
+ const m=adminMeta.missions[Number($('admin-mission-template').value)]||adminMeta.missions[0];
+ if(!m)return;
+ $('admin-mission-goal').value=m.goal;
+ $('admin-mission-reward').value=m.reward;
+}
+function renderMissions(g){
+ const existing=Array.isArray(g.missions)?g.missions:[];
+ $('current-missions').innerHTML=existing.map((m,i)=>
+  '<article><span><strong>Квест '+(i+1)+': '+safe(m.title)+'</strong><small style="display:block">'+safe(m.text||'')+'</small></span><small>'+Number(m.progress||0)+' / '+Number(m.goal||1)+' · '+money(m.reward)+'</small></article>'
+ ).join('')||'<p class="note">Нет заданий</p>';
+ const chosen=Number($('admin-mission-slot').value)||0,active=existing[chosen];
+ if(active&&adminMeta){
+   const index=adminMeta.missions.findIndex(m=>m.kind===active.kind&&m.title===active.title);
+   if(index>=0)$('admin-mission-template').value=String(index);
+   $('admin-mission-goal').value=active.goal;
+   $('admin-mission-reward').value=active.reward;
+ }
+}
+function historyTitle(action){
+ const p=action.payload||{};
+ if(action.type==='balance')return (Number(p.amount)>=0?'Добавлено ':'Списано ')+money(Math.abs(p.amount));
+ if(action.type==='deal')return 'Персональная сделка: '+(models.find(m=>m.id===p.modelId)?.model||'Автомобиль')+' · '+money(p.price);
+ if(action.type==='control'){
+  const labels={day:'Игровой день',level:'Уровень',garage:'Гараж',workshop:'СТО',showroom:'Автосалон',slots:'Дополнительные места'};
+  if(p.kind==='staff')return (p.enabled?'Нанят ':'Уволен ')+(adminMeta?.staff.find(s=>s.id===p.staff)?.name||p.staff);
+  if(p.kind==='mission')return 'Квест '+(Number(p.slot)+1)+': '+(adminMeta?.missions[p.template]?.title||'Задание')+' · цель '+p.goal+' · '+money(p.reward);
+  return (labels[p.kind]||'Настройка')+': '+Number(p.value);
+ }
+ return action.type;
+}
+async function sendControl(payload,label){
+ if(!selected)return toast('Сначала выбери игрока');
+ if(!confirm(label+'?'))return;
+ try{
+  await api('/api/admin/players/'+selected+'/control','POST',payload);
+  toast('Команда отправлена. Она применится при следующей синхронизации.');
+  await loadPlayers();
+ }catch(err){toast(err.message)}
+}
+document.querySelectorAll('[data-control]').forEach(button=>button.addEventListener('click',()=>{
+ const kind=button.dataset.control,source=button.dataset.source;
+ const value=Number($(source).value);
+ if(!Number.isSafeInteger(value))return toast('Нужно ввести целое число');
+ sendControl({kind,value},button.textContent.trim()+': '+value);
+}));
+$('admin-staff-controls').addEventListener('click',event=>{
+ const button=event.target.closest('button[data-staff]');if(!button)return;
+ const staff=button.dataset.staff,enabled=button.dataset.enabled==='true';
+ const name=adminMeta?.staff.find(x=>x.id===staff)?.name||staff;
+ sendControl({kind:'staff',staff,enabled},(enabled?'Нанять ':'Уволить ')+name);
+});
+$('admin-mission-template').addEventListener('change',fillMissionDefaults);
+$('admin-mission-slot').addEventListener('change',()=>{if(selectedPlayerGame)renderMissions(selectedPlayerGame)});
+$('admin-mission-apply').addEventListener('click',()=>{
+ const payload={kind:'mission',slot:Number($('admin-mission-slot').value),template:Number($('admin-mission-template').value),
+ goal:Number($('admin-mission-goal').value),reward:Number($('admin-mission-reward').value)};
+ const name=adminMeta.missions[payload.template]?.title||'Контракт';
+ sendControl(payload,'Заменить квест '+(payload.slot+1)+' на «'+name+'»');
+});
+
 $('player-list').addEventListener('click',e=>{const tr=e.target.closest('tr[data-id]');if(tr)showPlayer(tr.dataset.id).catch(err=>toast(err.message))});
 async function balance(sign){
  if(!selected)return toast('Сначала выбери игрока');
