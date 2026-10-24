@@ -11,6 +11,14 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="apple-touch-icon" href="icon.svg">
   <title>Симулятор перекупа — реальные фото авто</title>
+  <script>
+    (function(){
+      var theme='blue';
+      try{var saved=localStorage.getItem('perekup_theme_v1');if(saved==='blue'||saved==='black'||saved==='light')theme=saved;}catch(e){}
+      document.documentElement.setAttribute('data-theme',theme);
+      document.querySelector('meta[name="theme-color"]').setAttribute('content',theme==='light'?'#f2f6fc':theme==='black'?'#030407':'#071827');
+    })();
+  </script>
   <style>
     :root{--bg:#0c1318;--surface:#151f26;--surface2:#1b2830;--line:#2b383f;--text:#f2f6f4;--muted:#8f9e9f;--lime:#bdf579;--deep:#163125;--orange:#ffb769;--danger:#ff827e;--blue:#88baff;--radius:20px}
     *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}html{background:var(--bg);-webkit-text-size-adjust:100%}body{margin:0;color:var(--text);background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display",Inter,Segoe UI,sans-serif;font-size:14px;overscroll-behavior-y:contain}
@@ -55,6 +63,107 @@
     .real-photo.photo-missing a,.real-photo.photo-missing button{position:relative;z-index:3}
 
     .building .door{display:block}
+
+    /* Три полноценные темы; базовая тема новых игроков — синяя. */
+    html[data-theme="blue"]{
+      color-scheme:dark;
+      --bg:#071827;--surface:#10283c;--surface2:#18364e;--line:#2b4a63;
+      --text:#edf7ff;--muted:#a1bdd2;--lime:#69c1ff;--deep:#153955;
+      --orange:#ffbd7e;--danger:#ff938f;--blue:#85c9ff;
+      --glow:#133b5e;--hero-start:#1e5078;--hero-mid:#143a5b;--hero-end:#112739;
+      --hero-border:#387bb1;--nav-bg:#081b2cf7;--nav-active:#1b405f;
+      --control-bg:#1a405c;--control-ghost:#16324a;--notice-bg:#17334b;
+      --soft-bg:#0d2336;--tag-bg:#1d3d54;--accent-ink:#08243b;--hero-secondary:#c5e1f5;
+    }
+    html[data-theme="black"]{
+      color-scheme:dark;
+      --bg:#030407;--surface:#0e1015;--surface2:#191c24;--line:#313643;
+      --text:#f3f5f9;--muted:#9ea8b5;--lime:#80bfff;--deep:#0e223a;
+      --orange:#f8bc85;--danger:#f49b9b;--blue:#9ad0ff;
+      --glow:#10141d;--hero-start:#1b202b;--hero-mid:#11151c;--hero-end:#0b0d12;
+      --hero-border:#363c4b;--nav-bg:#08090bf7;--nav-active:#212736;
+      --control-bg:#252a34;--control-ghost:#191d25;--notice-bg:#171d27;
+      --soft-bg:#090b10;--tag-bg:#242932;--accent-ink:#071524;--hero-secondary:#c8d0da;
+    }
+    html[data-theme="light"]{
+      color-scheme:light;
+      --bg:#f2f6fc;--surface:#ffffff;--surface2:#eaf1fa;--line:#d6e1ee;
+      --text:#16243a;--muted:#536880;--lime:#1469c4;--deep:#dfedff;
+      --orange:#aa5c00;--danger:#bd3c37;--blue:#246eaf;
+      --glow:#e1efff;--hero-start:#e4f2ff;--hero-mid:#f0f7ff;--hero-end:#fff;
+      --hero-border:#c5ddf8;--nav-bg:#fffffff7;--nav-active:#e0efff;
+      --control-bg:#e5f0fc;--control-ghost:#f1f6fc;--notice-bg:#eaf4ff;
+      --soft-bg:#f7faff;--tag-bg:#e4eef9;--accent-ink:#fff;--hero-secondary:#445e7d;
+    }
+    html,body{background:var(--bg)}
+    .wrap{background:radial-gradient(ellipse 75% 220px at 50% 0%,var(--glow),transparent 95%),var(--bg)}
+    .hero{background:linear-gradient(125deg,var(--hero-start),var(--hero-mid) 58%,var(--hero-end));border-color:var(--hero-border)}
+    .hero-foot{color:var(--hero-secondary)}
+    .hero:after{color:var(--text)}
+    .label{color:var(--muted)}
+    .brandmark,.building .sign{background:var(--lime);color:var(--accent-ink)}
+    .daypill,.levelpill{background:var(--surface2);color:var(--text);border-color:var(--line)}
+    .levelpill{color:var(--lime)}
+    .btn-primary,.filter.selected{background:var(--lime);color:var(--accent-ink);border-color:var(--lime)}
+    .btn-secondary{background:var(--control-bg);color:var(--text)}
+    .btn-ghost,.btn-outline{background:var(--control-ghost);color:var(--text);border-color:var(--line)}
+    .btn-warn{background:var(--soft-bg);color:var(--danger);border:1px solid var(--line)}
+    .filter{background:var(--surface);color:var(--text);border-color:var(--line)}
+    .search-box{background:var(--surface);color:var(--text);border-color:var(--line)}
+    .search-box::placeholder{color:var(--muted)}
+    .search-box:focus{border-color:var(--lime)}
+    .chip{background:var(--tag-bg);color:var(--muted)}
+    .chip.green{background:var(--notice-bg);color:var(--lime)}
+    .chip.blue{background:var(--notice-bg);color:var(--blue)}
+    .chip.orange{background:var(--soft-bg);color:var(--orange)}
+    .chip.red{background:var(--soft-bg);color:var(--danger)}
+    .notice{background:var(--notice-bg);border-color:var(--line)}
+    .notice p{color:var(--muted)}
+    .notice.orange{background:var(--soft-bg);border-color:var(--line)}
+    .empty,.empty-slot{background:var(--soft-bg);border-color:var(--line);color:var(--muted)}
+    .logline{border-color:var(--line)}
+    .log-ico,.iconbox{background:var(--surface2)}
+    .bar{background:var(--line)}
+    .bar>div{background:linear-gradient(90deg,var(--blue),var(--lime))}
+    .building{background:linear-gradient(180deg,var(--hero-start),var(--hero-end));border-color:var(--line)}
+    .building .roof{background:var(--surface2);border-color:var(--line)}
+    .building .door{border-color:var(--line);background:repeating-linear-gradient(180deg,var(--surface2) 0px,var(--surface2) 12px,var(--line) 13px,var(--line) 18px)}
+    .building .floor{background:repeating-linear-gradient(120deg,var(--surface2),var(--surface2) 14px,var(--line) 15px,var(--line) 30px)}
+    .upgrade-card{background:linear-gradient(120deg,var(--surface2),var(--surface));border-color:var(--line)}
+    .upgrade-card p,.perk{color:var(--muted)}
+    .progress-inline span{background:var(--line)}
+    .progress-inline span.on{background:var(--lime)}
+    .mission{border-color:var(--line)}
+    .achievement{background:var(--surface);border-color:var(--line)}
+    .bottom-nav{background:var(--nav-bg);border-color:var(--line)}
+    .navitem{color:var(--muted)}
+    .navitem.active{background:var(--nav-active);color:var(--lime)}
+    .sheet{background:var(--surface);border-color:var(--line);color:var(--text)}
+    .handle{background:var(--line)}
+    .close{background:var(--surface2);color:var(--text)}
+    .price-choice{background:var(--surface2);color:var(--text);border-color:var(--line)}
+    .price-choice.active{background:var(--notice-bg);border-color:var(--lime)}
+    .toast{background:var(--lime);color:var(--accent-ink)}
+    .footertext{color:var(--muted)}
+    .sale-flag{background:var(--soft-bg);color:var(--orange);border-color:var(--line)}
+    .photo-retry{background:var(--surface2);border-color:var(--line);color:var(--lime)!important}
+    .car-image,.real-photo{background:var(--surface2)}
+    .photo-loading,.photo-loading small{color:var(--muted)}
+    .theme-shortcut{display:grid;place-items:center;flex:0 0 34px;width:34px;height:34px;border:1px solid var(--line);background:var(--surface2);color:var(--lime);border-radius:10px;font-size:19px}
+    .theme-options{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin-top:13px}
+    .theme-choice{min-width:0;display:flex;align-items:center;flex-direction:column;gap:8px;padding:10px 6px;border-radius:15px;border:2px solid var(--line);background:var(--surface2);color:var(--text);font-weight:800;font-size:11px;line-height:1.3}
+    .theme-choice.selected{border-color:var(--lime);box-shadow:0 0 0 1px var(--lime)}
+    .theme-choice .theme-check{color:var(--muted);font-size:10px;font-weight:750}
+    .theme-choice.selected .theme-check{color:var(--lime)}
+    .theme-preview{position:relative;width:100%;height:66px;max-width:112px;display:block;border-radius:9px;border:1px solid #869eb34d;overflow:hidden}
+    .theme-preview:before{content:'';position:absolute;top:9px;left:9px;width:52%;height:8px;border-radius:3px;background:var(--preview-accent)}
+    .theme-preview:after{content:'';position:absolute;top:24px;left:9px;width:78%;height:30px;border-radius:6px;background:var(--preview-card);box-shadow:0 0 0 1px #a0a0a014}
+    .theme-preview span{position:absolute;z-index:1;left:17px;top:32px;width:31%;height:7px;border-radius:3px;background:var(--preview-accent)}
+    .theme-preview-blue{background:#071827;--preview-accent:#69c1ff;--preview-card:#18364e}
+    .theme-preview-black{background:#030407;--preview-accent:#80bfff;--preview-card:#191c24}
+    .theme-preview-light{background:#f2f6fc;--preview-accent:#1469c4;--preview-card:#fff}
+    #theme-settings{scroll-margin-top:calc(16px + env(safe-area-inset-top))}
+    @media(max-width:385px){.header-right{gap:3px}.brand{gap:7px}.levelpill,.daypill{padding:6px}.theme-shortcut{width:30px;height:30px;flex-basis:30px}}
   </style>
 </head>
 <body>
@@ -79,6 +188,18 @@
   (()=>{
     'use strict';
     const SAVE_KEY='perekup_web_v1'; // Совместимо со старыми сохранениями
+    const THEME_KEY='perekup_theme_v1';
+    const THEME_NAMES={blue:'Базовый синий',black:'Тёмный чёрный',light:'Светлый'};
+    let activeTheme=document.documentElement.getAttribute('data-theme')||'blue';
+    function changeTheme(next){
+      if(!Object.prototype.hasOwnProperty.call(THEME_NAMES,next))return;
+      activeTheme=next;
+      document.documentElement.setAttribute('data-theme',next);
+      const meta=document.querySelector('meta[name="theme-color"]');
+      if(meta)meta.setAttribute('content',next==='light'?'#f2f6fc':next==='black'?'#030407':'#071827');
+      try{localStorage.setItem(THEME_KEY,next)}catch(e){}
+      render();notice('🎨 Тема: '+THEME_NAMES[next]);
+    }
     const MODELS=[
       ['LADA','2107',170000,'sedan',0],['LADA','Priora',390000,'sedan',0],['LADA','Granta',660000,'sedan',0],['LADA','Vesta',1130000,'sedan',0],['LADA','Niva Legend',780000,'suv',0],['LADA','Largus',860000,'wagon',0],
       ['Renault','Logan',680000,'sedan',0],['Renault','Sandero',740000,'hatch',0],['Renault','Duster',1160000,'suv',1],['Renault','Kaptur',1340000,'suv',1],
@@ -276,7 +397,7 @@
         <div class="car-actions"><button class="btn ${wanted?'btn-primary':'btn-secondary'}" data-action="${owned?'open-car':'open-offer'}" data-id="${o.id}">${wanted?'💸 Ответить':owned?'Управлять →':'Осмотреть →'}</button></div></div></article>`;
     }
     function paintBar(val){return `<div class="bar"><div style="width:${clamp(val,0,100)}%"></div></div>`}
-    function header(){return `<header><div class="brand"><div class="brandmark">${ico('market','ic')}</div><div><h1>ПЕРЕКУП</h1><small>СИМУЛЯТОР БИЗНЕСА</small></div></div><div class="header-right"><span class="levelpill">LVL ${Math.floor(game.xp/180)+1}</span><span class="daypill">День ${game.day}</span></div></header>`}
+    function header(){return `<header><div class="brand"><div class="brandmark">${ico('market','ic')}</div><div><h1>ПЕРЕКУП</h1><small>СИМУЛЯТОР БИЗНЕСА</small></div></div><div class="header-right"><button class="theme-shortcut" data-action="themes" aria-label="Настройки темы" title="Сменить тему">🎨</button><span class="levelpill">LVL ${Math.floor(game.xp/180)+1}</span><span class="daypill">День ${game.day}</span></div></header>`}
     function home(){
       const best=[...game.market].filter(x=>x.price<=game.money&&game.inventory.length<capacity()).sort((a,b)=>a.price/fair(a)-b.price/fair(b))[0];
       const pending=game.inventory.filter(x=>x.buyerOffer);
@@ -327,7 +448,12 @@
       <div class="section-head"><h2>📋 Контракты</h2><span class="hint">Награды за задания</span></div><div class="card">${game.missions.map(m=>`<div class="mission"><div class="row"><div><strong>${m.title}</strong><p>${m.text}</p></div><span class="reward">+${fmt(m.reward)}</span></div><div class="row" style="margin-top:7px"><span class="small muted">${m.progress}/${m.goal}</span>${m.progress>=m.goal?`<button class="btn btn-primary btn-small" data-action="claim-mission" data-id="${m.uid}">Забрать</button>`:'<span class="small muted">В процессе</span>'}</div>${paintBar(m.progress/m.goal*100)}</div>`).join('')}</div>
       <div class="section-head"><h2>🏅 Достижения</h2><span class="hint">${achievements.filter(x=>x[3]).length}/${achievements.length}</span></div><div class="achievements">${achievements.map(([em,title,desc,ok])=>`<div class="achievement ${ok?'':'locked'}"><div class="emoji">${ok?em:'🔒'}</div><strong>${title}</strong><span>${desc}</span></div>`).join('')}</div>
       <div class="section-head"><h2>📈 Финансы</h2></div><div class="card"><div class="row"><span class="muted">Оборот по продажам</span><strong>${fmt(game.turnover)}</strong></div><div class="divider"></div><div class="row"><span class="muted">Чистая прибыль по сделкам</span><strong class="${game.totalProfit>=0?'good':'bad'}">${fmt(game.totalProfit)}</strong></div><div class="divider"></div><div class="row"><span class="muted">Всего куплено</span><strong>${game.madeDeals} авто</strong></div><div class="divider"></div><div class="row"><span class="muted">Работ в мастерской</span><strong>${game.repairs}</strong></div></div>
-      <div class="section-head"><h2>📸 Фотографии машин</h2></div><div class="card"><strong>Только настоящие фотографии</strong><p class="small muted" style="line-height:1.5">Для популярных моделей используется готовая подборка реальных фото Wikimedia Commons. Остальные ищутся по названию модели. Фотография может отличаться по цвету и году выпуска. Интернет нужен для показа фото; при сбое есть кнопка повторной загрузки. Источник и лицензия указаны по ссылке на фотографии.</p></div><div class="section-head"><h2>⚙️ Настройки</h2></div><div class="card"><div class="notice" style="margin:0 0 12px"><div class="symbol">📲</div><div><strong>Добавить на iPhone</strong><p>Открой опубликованную игру в Safari → «Поделиться» → «На экран Домой». Прогресс сохраняется в этом браузере.</p></div></div><button class="btn btn-secondary btn-block" data-action="export-save">📤 Сохранить копию прогресса</button><label for="load-backup" class="btn btn-outline btn-block" style="margin-top:9px;cursor:pointer">📥 Восстановить прогресс</label><input id="load-backup" type="file" accept=".json,application/json" style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none"><button class="btn btn-outline btn-block" style="margin-top:9px" data-action="reset-ask">Начать новую игру</button></div>
+      <div class="section-head"><h2>📸 Фотографии машин</h2></div><div class="card"><strong>Только настоящие фотографии</strong><p class="small muted" style="line-height:1.5">Для популярных моделей используется готовая подборка реальных фото Wikimedia Commons. Остальные ищутся по названию модели. Фотография может отличаться по цвету и году выпуска. Интернет нужен для показа фото; при сбое есть кнопка повторной загрузки. Источник и лицензия указаны по ссылке на фотографии.</p></div><div class="section-head" id="theme-settings"><h2>🎨 Тема интерфейса</h2></div>
+       <div class="card"><strong>Выбери оформление игры</strong><p class="small muted" style="line-height:1.5">Тема сохраняется на этом устройстве и не влияет на игровые деньги или прогресс.</p>
+       <div class="theme-options" role="group" aria-label="Выбор цветовой темы">
+       ${[['blue','Базовый синий'],['black','Тёмный чёрный'],['light','Светлый']].map(([key,name])=>`<button type="button" class="theme-choice ${activeTheme===key?'selected':''}" data-action="set-theme" data-value="${key}" aria-pressed="${activeTheme===key?'true':'false'}"><span class="theme-preview theme-preview-${key}" aria-hidden="true"><span></span></span><span>${name}</span><span class="theme-check">${activeTheme===key?'✓ Выбрана':'Выбрать'}</span></button>`).join('')}
+       </div></div>
+       <div class="section-head"><h2>⚙️ Настройки</h2></div><div class="card"><div class="notice" style="margin:0 0 12px"><div class="symbol">📲</div><div><strong>Добавить на iPhone</strong><p>Открой опубликованную игру в Safari → «Поделиться» → «На экран Домой». Прогресс сохраняется в этом браузере.</p></div></div><button class="btn btn-secondary btn-block" data-action="export-save">📤 Сохранить копию прогресса</button><label for="load-backup" class="btn btn-outline btn-block" style="margin-top:9px;cursor:pointer">📥 Восстановить прогресс</label><input id="load-backup" type="file" accept=".json,application/json" style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none"><button class="btn btn-outline btn-block" style="margin-top:9px" data-action="reset-ask">Начать новую игру</button></div>
       <div class="footertext">«Симулятор перекупа» — фанатская игра. Фото: Wikimedia Commons, с указанием автора и лицензии. Изображения демонстрируют модель, но не конкретный игровой автомобиль. Названия моделей принадлежат правообладателям. Цены и события вымышлены.</div></main>`;
     }
     function render(){
@@ -439,6 +565,8 @@
     async function exportGame(){const data=JSON.stringify({game,nextId,exportedAt:new Date().toISOString()},null,2);try{const blob=new Blob([data],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='perekup-save-day-'+game.day+'.json';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),2500);notice('Резервная копия создана!')}catch(e){notice('Не удалось создать файл.',true)}}
     function action(type,button){const i=button.dataset.id,v=button.dataset.value;
       if(type==='go')return showTab(v);
+      if(type==='themes'){showTab('career');const el=document.getElementById('theme-settings');if(el)el.scrollIntoView({block:'start'});return;}
+      if(type==='set-theme')return changeTheme(v);
       if(type==='close'||type==='backdrop')return closeModal();
       if(type==='open-offer')return openModal('offer',Number(i));
       if(type==='open-car')return openModal('car',Number(i));
