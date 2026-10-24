@@ -1220,6 +1220,7 @@
     function upgrade(type){const arr=type==='garage'?GARAGES:WORKSHOPS,key=type==='garage'?'garageTier':'workshopTier',next=arr[game[key]+1];if(!next)return;if(!changeCash(-next.price))return notice('Недостаточно денег!',true);game[key]++;xp(40);rep(3);log('🏗️','Бизнес расширяется!',next.name+' · '+fmt(next.price));save();closeModal();render();notice('🎉 Открыто: '+next.name)}
     async function exportGame(){const data=JSON.stringify({game,nextId,exportedAt:new Date().toISOString()},null,2);try{const blob=new Blob([data],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='perekup-save-day-'+game.day+'.json';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),2500);notice('Резервная копия создана!')}catch(e){notice('Не удалось создать файл.',true)}}
     function action(type,button){const i=button.dataset.id,v=button.dataset.value;
+      if(type==='retry-maintenance'){checkMaintenance().then(closed=>{if(!closed&&!gameStarted)startGame()});return;}
       if(type==='auction-bid')return auctionBid(i);
       if(type==='deliver-order')return deliverOrder(i,button.dataset.car);
       if(type==='buy-scrap')return buyScrap(i);
@@ -1275,8 +1276,97 @@
       e.target.value='';
     });
     document.addEventListener('input',e=>{if(e.target?.id==='search-model'){const pos=e.target.selectionStart;searchTerm=e.target.value;const active=e.target;const cards=game.market.filter(o=>(marketFilter==='all'||(marketFilter==='cheap'&&o.price<600000)||(marketFilter==='profit'&&o.price<fair(o)*.91)||(marketFilter==='premium'&&model(o)[4]>=2))&&carName(o).toLowerCase().includes(searchTerm.toLowerCase()));const list=document.querySelector('.market-list');if(list){list.innerHTML=cards.map(o=>iconCarCard(o)).join('');hydratePhotos()}else{render();document.getElementById('search-model')?.focus()}if(active.isConnected)try{active.setSelectionRange(pos,pos)}catch(_){}}});
+
+    /* Режим обслуживания управляется maintenance.json. Никакого стирания сохранений. */
+    let maintenanceBusy=false,maintenanceActive=false,gameStarted=false;
+    async function checkMaintenance(){
+      if(maintenanceBusy)return maintenanceActive;
+      maintenanceBusy=true;
+      try{
+        const status=await Promise.race([
+          fetch('./maintenance.json?v='+Date.now(),{cache:'no-store'})
+            .then(r=>r.ok?r.json():null).catch(()=>null),
+          new Promise(resolve=>setTimeout(()=>resolve(null),1900))
+        ]);
+        if(status&&typeof status.enabled==='boolean'){
+          maintenanceActive=status.enabled;
+          const screen=document.getElementById('maintenance-screen');
+          screen.hidden=!maintenanceActive;
+          if(maintenanceActive){
+            const message=typeof status.message==='string'?status.message.slice(0,260):'Обновляем игру. Попробуй зайти позже.';
+            document.getElementById('maintenance-message').textContent=message;
+          }
+        }
+      }catch(e){}finally{maintenanceBusy=false}
+      return maintenanceActive;
+    }
+    function splashProgress(value,message){
+      const bar=document.getElementById('boot-progress'),label=document.getElementById('boot-status');
+      if(bar)bar.style.width=clamp(value,0,100)+'%';
+      if(label)label.textContent=message;
+    }
+    function hideSplash(){
+      const screen=document.getElementById('boot-screen');
+      if(screen)screen.classList.add('is-hidden');
+    }
+    function preloadImage(url,limit){
+      return new Promise(resolve=>{
+        if(!url||typeof Image!=='function')return resolve(false);
+        const img=new Image();let finished=false;
+        function finish(ok){if(finished)return;finished=true;img.onload=null;img.onerror=null;resolve(ok)}
+        const timer=setTimeout(()=>finish(false),limit);
+        img.onload=()=>{clearTimeout(timer);finish(true)};
+        img.onerror=()=>{clearTimeout(timer);finish(false)};
+        try{img.src=url}catch(e){clearTimeout(timer);finish(false)}
+      });
+    }
+    async function preloadFirstCars(){
+      splashProgress(38,'Готовим фотографии автомобилей…');
+      const candidates=[
+        [...game.market].filter(o=>o.price<=game.money&&game.inventory.length<capacity()).sort((a,b)=>a.price/fair(a)-b.price/fair(b))[0],
+        ...game.market.slice(0,4),
+        ...game.inventory.slice(0,2)
+      ].filter(Boolean);
+      const seen=new Set(),chosen=[];
+      for(const car of candidates){
+        if(seen.has(car.modelId))continue;
+        seen.add(car.modelId);
+        const p=photoLibrary[car.modelId];
+        if(p&&Array.isArray(p.urls)&&p.urls[0])chosen.push(p.urls[0]);
+        if(chosen.length>=4)break;
+      }
+      const urls=['./icon.svg',...chosen];
+      let completed=0;
+      const tasks=urls.map(url=>preloadImage(url,2200).then(()=>{
+        completed++;splashProgress(38+Math.round(58*completed/urls.length),'Фотографии: '+completed+' / '+urls.length);
+      }));
+      // Дополнительные модели без готовых ссылок продолжат грузиться в фоне.
+      await Promise.race([
+        Promise.all(tasks),
+        new Promise(resolve=>setTimeout(resolve,3200))
+      ]);
+    }
+    async function startGame(){
+      if(gameStarted)return;
+      splashProgress(9,'Проверяем доступность игры…');
+      const closed=await checkMaintenance();
+      if(closed){hideSplash();return}
+      gameStarted=true;
+      splashProgress(24,'Подготавливаем сохранение…');
+      try{
+        load();render();
+        await preloadFirstCars();
+        splashProgress(100,'Всё готово! Можно играть');
+        await new Promise(resolve=>setTimeout(resolve,180));
+      }catch(error){
+        // Даже если фотохостинг недоступен, не блокируем саму игру.
+        try{if(!game)load();render()}catch(e){console.error('Ошибка загрузки игры',e)}
+      }finally{hideSplash()}
+    }
     if('serviceWorker' in navigator&&location.protocol==='https:'){navigator.serviceWorker.register('./sw.js').catch(()=>{})}
-    load();render();
+    document.addEventListener('visibilitychange',()=>{if(!document.hidden)checkMaintenance()});
+    setInterval(()=>{checkMaintenance()},45000);
+    startGame();
   })();
   </script>
 </body>
