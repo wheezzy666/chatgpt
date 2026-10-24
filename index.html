@@ -718,7 +718,7 @@
       const normal=[...fresh,...surviving].slice(0,18);
       game.market=[...personal,...normal];
       game.marketRefreshAt=now+MARKET_INTERVAL_MS;
-      log('🆕','Новые объявления на авторынке','Добавлено '+fresh.length+' автомобиля · день '+game.day+' не изменился');
+      game.marketLastRefreshAt=now;
       save();
       refreshMarketView();
     }
