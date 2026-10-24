@@ -1327,20 +1327,29 @@
         ...game.market.slice(0,4),
         ...game.inventory.slice(0,2)
       ].filter(Boolean);
-      const seen=new Set(),chosen=[];
+      const seen=new Set(),modelIds=[];
       for(const car of candidates){
         if(seen.has(car.modelId))continue;
-        seen.add(car.modelId);
-        const p=photoLibrary[car.modelId];
-        if(p&&Array.isArray(p.urls)&&p.urls[0])chosen.push(p.urls[0]);
-        if(chosen.length>=4)break;
+        seen.add(car.modelId);modelIds.push(car.modelId);
+        if(modelIds.length>=4)break;
       }
-      const urls=['./icon.svg',...chosen];
-      let completed=0;
-      const tasks=urls.map(url=>preloadImage(url,2200).then(()=>{
-        completed++;splashProgress(38+Math.round(58*completed/urls.length),'Фотографии: '+completed+' / '+urls.length);
-      }));
-      // Дополнительные модели без готовых ссылок продолжат грузиться в фоне.
+      const total=modelIds.length+1;let complete=0;
+      const progress=()=>{complete++;splashProgress(38+Math.round(58*complete/total),'Готово объектов: '+complete+' / '+total)};
+      const tasks=[preloadImage('./icon.svg',1600).then(progress)];
+      for(const modelId of modelIds){
+        tasks.push((async()=>{
+          let photo=photoLibrary[modelId];
+          if(!photo){
+            // Используем только реальные фото из существующего поиска Wikimedia.
+            photo=await Promise.race([
+              requestPhoto(modelId),
+              new Promise(resolve=>setTimeout(()=>resolve(null),1350))
+            ]);
+          }
+          if(photo&&photo.urls&&photo.urls[0])await preloadImage(photo.urls[0],1700);
+        })().catch(()=>{}).then(progress));
+      }
+      // Внешний фотохостинг не должен задерживать игру дольше 3,2 секунд.
       await Promise.race([
         Promise.all(tasks),
         new Promise(resolve=>setTimeout(resolve,3200))
