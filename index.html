@@ -351,9 +351,23 @@
       ['Land Rover','Discovery',4650000,'suv',2],
       ['Citroën','C4',990000,'hatch',0],
       ['Citroën','C5',1120000,'sedan',1],
-      ['MINI','Cooper',1780000,'hatch',1]
+      ['MINI','Cooper',1780000,'hatch',1],
+      ['Nissan','Skyline GT-R R34',12000000,'coupe',3],
+      ['Toyota','Supra A80',9900000,'coupe',3],
+      ['Mercedes-Benz','E-Class W124',850000,'sedan',0],
+      ['Honda','NSX',15000000,'coupe',3],
+      ['Porsche','944',3000000,'coupe',2],
+      ['Chevrolet','Corvette C6',6400000,'coupe',3],
+      ['Mitsubishi','Lancer Evolution IX',4400000,'sedan',3],
+      ['Mitsubishi','3000GT',2700000,'coupe',2],
+      ['Mazda','RX-7 FD',7400000,'coupe',3],
+      ['Subaru','Impreza WRX GD',2150000,'sedan',2]
     ];
     const YEARS={'LADA 2107':[1990,2012],'LADA Priora':[2007,2018],'LADA Granta':[2011,2024],'LADA Vesta':[2015,2024],'LADA Largus':[2012,2024],'Renault Kaptur':[2016,2022],'Hyundai Creta':[2016,2024],'Kia K5':[2020,2024],'Škoda Rapid':[2012,2023],'Škoda Kodiaq':[2016,2024],'Toyota Land Cruiser 200':[2007,2021],'BMW 3 Series E90':[2005,2013],'BMW 5 Series F10':[2010,2017],'BMW X3 F25':[2010,2017],'BMW X5 E70':[2006,2013],'BMW M3 F80':[2014,2018],'Mercedes-Benz C-Class W204':[2007,2015],'Mercedes-Benz E-Class W212':[2009,2016],'Audi A4 B8':[2007,2015],'Audi A6 C7':[2011,2018],'Mitsubishi Lancer X':[2007,2017],'Volvo XC60':[2008,2024],'Tesla Model 3':[2017,2024]};
+    Object.assign(YEARS,{'Nissan Skyline GT-R R34':[1999,2002],'Toyota Supra A80':[1993,2002],
+      'Mercedes-Benz E-Class W124':[1984,1997],'Honda NSX':[1990,2005],'Porsche 944':[1982,1991],
+      'Chevrolet Corvette C6':[2005,2013],'Mitsubishi Lancer Evolution IX':[2005,2007],
+      'Mitsubishi 3000GT':[1990,1999],'Mazda RX-7 FD':[1992,2002],'Subaru Impreza WRX GD':[2000,2007]});
     const PAINTS=[['#7babb0','Серебристый'],['#c5d2d2','Белый'],['#293745','Графит'],['#c94f48','Красный'],['#4777b0','Синий'],['#c7aa71','Бежевый'],['#48816c','Зелёный'],['#1f262b','Чёрный']];
     const DEFECTS=[{id:'engine',title:'Проблемы с двигателем',ratio:.13,boost:23},{id:'gearbox',title:'Неисправная коробка',ratio:.105,boost:21},{id:'body',title:'Повреждения кузова',ratio:.075,boost:17},{id:'electric',title:'Электрика и датчики',ratio:.046,boost:15},{id:'suspension',title:'Изношенная подвеска',ratio:.068,boost:17},{id:'brakes',title:'Тормозная система',ratio:.038,boost:14}];
     const GARAGES=[{name:'Старый гараж',slots:2,price:0,desc:'Тесный бокс с двумя местами'},{name:'Гараж с пристройкой',slots:4,price:210000,desc:'Можно держать 4 машины'},{name:'Автобокс',slots:7,price:670000,desc:'Склад и 7 машиномест'},{name:'Автоцентр',slots:10,price:1720000,desc:'Просторное помещение для 10 авто'},{name:'Автокомплекс',slots:16,price:4200000,desc:'16 машиномест и зона выдачи'}];
@@ -495,7 +509,9 @@
       `;
     }
     function makeOrder(){
-      const pick=MODELS.map((m,i)=>({m,i})).filter(o=>o.m[4]<=2)[rand(0,Math.floor(MODELS.length*.5)-1)]||{i:0,m:MODELS[0]};
+      const eligible=(game.market||[]).filter(o=>model(o)[4]<=1&&o.price<=Math.max(200000,game.money*1.8));
+      const marketChoice=eligible.length?eligible[rand(0,eligible.length-1)]:null;
+      const pick=marketChoice?{i:marketChoice.modelId,m:MODELS[marketChoice.modelId]}:(()=>{const choices=MODELS.map((m,i)=>({m,i})).filter(o=>o.m[4]<=1);return choices[rand(0,choices.length-1)]})() ;
       return {id:id(),modelId:pick.i,client:ORDER_NAMES[rand(0,ORDER_NAMES.length-1)],budget:R(pick.m[2]*1.38),reward:R(Math.max(20000,pick.m[2]*.06)),minCondition:rand(55,77),deadline:game.day+5,completed:false};
     }
     function refreshOrders(){
@@ -782,7 +798,7 @@
         </section>
         <section id="world-collection"><div class="section-head"><h2>🏆 Коллекция легенд</h2><span class="hint">${game.collection.length} машин</span></div>
           <p class="small muted">Легендарная или премиальная модель добавляется в альбом после первой покупки — даже если потом её продать.</p>
-          ${game.collection.length?game.collection.map(o=>`<div class="card"><div class="row"><strong>🏆 ${escapeHtml(o.name)}</strong><span class="chip green">День ${o.day}</span></div></div>`).join(''):`<div class="empty"><span class="emoji">🏆</span><strong>Пока нет редких машин</strong><p>Покупай BMW M5, Toyota Supra, Porsche 911 и другие легенды.</p></div>`}
+          ${game.collection.length?game.collection.map(o=>`<div class="card" style="padding:0;overflow:hidden"><div class="car-image" style="height:130px">${photoMarkup({modelId:o.modelId})}</div><div class="row" style="padding:13px"><strong>🏆 ${escapeHtml(o.name)}</strong><span class="chip green">День ${o.day}</span></div></div>`).join(''):`<div class="empty"><span class="emoji">🏆</span><strong>Пока нет редких машин</strong><p>Покупай BMW M5, Toyota Supra, Porsche 911 и другие легенды.</p></div>`}
         </section>
       </main>`;
     }
@@ -1041,7 +1057,6 @@
     function nextDay(){
       game.day++;game.lastEvent='';
       marketPulse();finishAuctions();
-      if(game.day-game.lastOrderDay>=3)refreshOrders();
       if(game.day-game.scrapDay>=2)refreshScrap();
       for(const o of game.inventory){
         if(o.buyerOffer&&o.buyerOffer.day<game.day-1){o.buyerOffer=null}
@@ -1062,7 +1077,13 @@
       if(event===1&&game.inventory.length){const amt=rand(2,7)*1000;if(changeCash(-amt)){game.lastEvent='Незапланированные расходы на парковку: −'+fmt(amt);log('🅿️','Платная парковка','−'+fmt(amt))}}
       if(event===2){game.lastEvent='На рынке ажиотаж: особенно быстро раскупают авто с выгодной ценой.'}
       if(event===3){game.lastEvent='Новые объявления! Не пропусти интересные варианты.'}
-      progress('day');newMarket();log('🌅','Начался день '+game.day,'Авторынок обновился. Проверь объявления.');save();render();notice('☀️ День '+game.day+' — новые предложения!');
+      progress('day');newMarket();
+      if(Math.random()<.24){
+        const targets=game.market.filter(o=>o.price<fair(o)*.90);
+        if(targets.length){const candidate=targets[rand(0,targets.length-1)],enemy=game.rivals[rand(0,game.rivals.length-1)];enemy.deals++;game.market=game.market.filter(o=>o!==candidate);log('⚔️','Конкурент выкупил авто',enemy.name+' забрал '+carName(candidate)+' раньше тебя.');}
+      }
+      if(game.day-game.lastOrderDay>=3||game.orders.length===0)refreshOrders();
+      log('🌅','Начался день '+game.day,'Авторынок обновился. Проверь объявления.');save();render();notice('☀️ День '+game.day+' — новые предложения!');
     }
     function buy(i){
       const o=findOffer(i);if(!o)return;
