@@ -163,12 +163,35 @@
     .theme-preview-black{background:#030407;--preview-accent:#80bfff;--preview-card:#191c24}
     .theme-preview-light{background:#f2f6fc;--preview-accent:#1469c4;--preview-card:#fff}
 
+
+    /* Разделы большого мира */
+    .world-jump{display:flex;gap:7px;overflow-x:auto;scrollbar-width:none;margin:14px 0 4px}
+    .world-jump a{white-space:nowrap;background:var(--surface2);border:1px solid var(--line);border-radius:12px;padding:9px 11px;color:var(--text);text-decoration:none;font-size:11px;font-weight:750}
+    .world-page section{scroll-margin-top:20px;margin-top:25px}
+    .world-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+    .world-car{padding:0 0 12px;display:flex;flex-direction:column;gap:3px}
+    .world-car .car-image{height:106px;margin-bottom:9px}
+    .world-car>strong,.world-car>.small,.world-car>.big,.world-car>.btn{margin-left:10px!important;margin-right:10px!important}
+    .world-car>strong{font-size:13px;line-height:1.3;min-height:33px}
+    .world-car>.btn{margin-top:auto!important;width:calc(100% - 20px)}
+    .world-order{margin-top:9px}
+    .world-rival{padding:11px 0;border-bottom:1px solid var(--line)}
+    .world-rival:last-child{border:0}
+    .world-order .big{font-size:16px}
+    .business-staff{display:grid;gap:9px}
+    .business-staff .card{margin-top:0}
+    .message-chat{display:grid;gap:8px;padding:9px 0}
+    .message-bubble{max-width:88%;padding:11px 12px;border-radius:14px;background:var(--surface2);font-size:12px;line-height:1.4}
+    .message-bubble.mine{justify-self:end;background:var(--notice-bg);border:1px solid var(--hero-border)}
+    .message-bubble.buyer{justify-self:start}
+    .notice .symbol{flex:0 0 auto}
+    @media(max-width:365px){.world-grid{gap:7px}.world-car .car-image{height:95px}.navitem{font-size:8px}.bottom-nav{padding-left:1px;padding-right:1px}}
     /* Удобный повторный торг и повышенные скидки */
     .haggle-options{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:10px}
     .haggle-choice{min-height:45px;font-size:15px;font-variant-numeric:tabular-nums;padding:10px 4px}
     .haggle-choice:disabled{opacity:.4}
-    /* Профиль игрока — шесть удобных вкладок на iPhone */
-    .bottom-nav{grid-template-columns:repeat(6,minmax(0,1fr));padding-left:6px;padding-right:6px;gap:1px}
+    /* Профиль игрока и новые вкладки на iPhone */
+    .bottom-nav{grid-template-columns:repeat(7,minmax(0,1fr));padding-left:4px;padding-right:4px;gap:1px}
     .navitem{font-size:9px;gap:4px;padding:8px 0;letter-spacing:-.1px}
     .navitem .ic{width:20px;height:20px}
     .profile-hero{display:flex;align-items:center;gap:15px;background:linear-gradient(120deg,var(--hero-start),var(--surface));padding:17px;border:1px solid var(--hero-border);border-radius:20px}
@@ -337,7 +360,7 @@
     const WORKSHOPS=[{name:'Без своей СТО',price:0,discount:0,desc:'Ремонт у сторонних механиков'},{name:'Свой подъёмник',price:290000,discount:.14,desc:'Снижает стоимость всех работ на 14%'},{name:'Полноценная СТО',price:860000,discount:.29,desc:'Скидка на ремонт 29% и собственная мастерская'},{name:'СТО премиум',price:2100000,discount:.44,desc:'Скидка 44% благодаря современному оборудованию'}];
     const SERVICES=[{id:'service',name:'Техническое обслуживание',short:'ТО',desc:'Масла, фильтры, проверка узлов · +9 к состоянию',ratio:.025,boost:9},{id:'detail',name:'Химчистка салона',short:'Салон',desc:'Чистота и предпродажная подготовка · +6',ratio:.013,boost:6},{id:'paint',name:'Полировка и косметика',short:'Кузов',desc:'Устранить потёртости и освежить ЛКП · +11',ratio:.04,boost:11},{id:'tune',name:'Улучшение комплектации',short:'Тюнинг',desc:'Мультимедиа и комфорт · прибавка к цене +6%',ratio:.05,boost:0}];
     const MISSION_POOL=[{kind:'buy',goal:1,title:'Заключи сделку',text:'Купи 1 автомобиль',reward:27000},{kind:'inspect',goal:2,title:'Проверка документов',text:'Проведи 2 диагностики автомобилей',reward:16000},{kind:'fix',goal:1,title:'Мастер на все руки',text:'Проведи 1 ремонт или обслуживание',reward:23000},{kind:'sell',goal:1,title:'Счастливый покупатель',text:'Продай 1 автомобиль',reward:37000},{kind:'buy',goal:2,title:'Пополнить автопарк',text:'Купи 2 автомобиля',reward:44000},{kind:'fix',goal:3,title:'Работа кипит',text:'Сделай 3 операции в мастерской',reward:46000},{kind:'day',goal:3,title:'Рабочая неделя',text:'Проведи 3 игровых дня',reward:25000},{kind:'sell',goal:2,title:'Удачный оборот',text:'Продай 2 машины',reward:68000}];
-    const ICONS={profile:'<circle cx="12" cy="8" r="4"/><path d="M4 21v-2a8 8 0 0 1 16 0v2"/>',home:'<path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"/>',market:'<path d="M5 17h14l-1.2-5.2a2 2 0 0 0-2-1.6H8.2a2 2 0 0 0-2 1.6L5 17Zm0 0v2m14-2v2M7 10l1.2-4h7.6l1.2 4M3 17h18M7 14h.01M17 14h.01"/>',garage:'<path d="M3 21V8l9-5 9 5v13M3 10h18M7 21v-8h10v8M7 17h10"/>',tools:'<path d="M14.7 6.3a4 4 0 0 0-5 5L4 17l3 3 5.7-5.7a4 4 0 0 0 5-5L15 12l-3-3z"/>',career:'<path d="M4 20h16M6 16v-5h4v5M10 16V6h4v10M14 16V9h4v7M8 3h8"/>',arrow:'<path d="M5 12h14m-6-6 6 6-6 6"/>',check:'<path d="m4 12 5 5L20 6"/>',plus:'<path d="M12 5v14M5 12h14"/>',clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',heart:'<path d="M20.8 4.8a5.5 5.5 0 0 0-7.8 0L12 5.8l-1-1a5.5 5.5 0 1 0-7.8 7.8L12 21l8.8-8.4a5.5 5.5 0 0 0 0-7.8Z"/>',alert:'<path d="m12 3 10 18H2L12 3ZM12 9v5m0 3h.01"/>'};
+    const ICONS={world:'<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18"/>',profile:'<circle cx="12" cy="8" r="4"/><path d="M4 21v-2a8 8 0 0 1 16 0v2"/>',home:'<path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"/>',market:'<path d="M5 17h14l-1.2-5.2a2 2 0 0 0-2-1.6H8.2a2 2 0 0 0-2 1.6L5 17Zm0 0v2m14-2v2M7 10l1.2-4h7.6l1.2 4M3 17h18M7 14h.01M17 14h.01"/>',garage:'<path d="M3 21V8l9-5 9 5v13M3 10h18M7 21v-8h10v8M7 17h10"/>',tools:'<path d="M14.7 6.3a4 4 0 0 0-5 5L4 17l3 3 5.7-5.7a4 4 0 0 0 5-5L15 12l-3-3z"/>',career:'<path d="M4 20h16M6 16v-5h4v5M10 16V6h4v10M14 16V9h4v7M8 3h8"/>',arrow:'<path d="M5 12h14m-6-6 6 6-6 6"/>',check:'<path d="m4 12 5 5L20 6"/>',plus:'<path d="M12 5v14M5 12h14"/>',clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',heart:'<path d="M20.8 4.8a5.5 5.5 0 0 0-7.8 0L12 5.8l-1-1a5.5 5.5 0 1 0-7.8 7.8L12 21l8.8-8.4a5.5 5.5 0 0 0 0-7.8Z"/>',alert:'<path d="m12 3 10 18H2L12 3ZM12 9v5m0 3h.01"/>'};
     const R=n=>Math.round(n/1000)*1000;
     const rand=(a,b)=>Math.floor(Math.random()*(b-a+1))+a;
     const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
@@ -699,6 +722,7 @@
       const best=[...game.market].filter(x=>x.price<=game.money&&game.inventory.length<capacity()).sort((a,b)=>a.price/fair(a)-b.price/fair(b))[0];
       const pending=game.inventory.filter(x=>x.buyerOffer);
       return `<main><div class="hero"><span class="label">Ваш капитал</span><div class="balance">${num(game.money)} <span>₽</span></div><div class="hero-foot"><span class="hero-stat"><i class="dot"></i> Репутация ${game.rep}/100</span><span class="hero-stat">🚗 ${game.inventory.length}/${capacity()} мест</span></div><div class="hero-actions"><button class="btn btn-primary" data-action="go" data-value="market">${ico('market')} Авторынок</button><button class="btn btn-secondary" data-action="next-day">${ico('clock')} Следующий день</button></div></div>
+      <div class="card" style="margin-top:12px"><div class="row"><div><strong>🌍 Мир бизнеса</strong><p class="small muted" style="margin:5px 0">Аукционы, заказы клиентов, разборка и конкуренты</p></div><button class="btn btn-secondary btn-small" data-action="go" data-value="world">Открыть →</button></div></div>
       <div class="stats-grid"><div class="mini-stat"><strong>${game.sold}</strong><small>Продано авто</small></div><div class="mini-stat"><strong class="${game.totalProfit>=0?'green':'bad'}">${game.totalProfit>=0?'+':''}${Math.round(game.totalProfit/1000)}к</strong><small>Прибыль, ₽</small></div><div class="mini-stat"><strong>${game.inventory.filter(x=>x.listed).length}</strong><small>В продаже</small></div></div>
       ${game.lastEvent?`<div class="notice orange"><div class="symbol">📰</div><div><strong>Событие дня</strong><p>${game.lastEvent}</p></div></div>`:''}
       ${pending.length?`<div class="notice"><div class="symbol">💰</div><div style="flex:1"><strong>Есть ${pending.length} ${pending.length===1?'покупатель':'покупателя'}!</strong><p>Клиенты оставили предложения на ваши автомобили.</p></div><button class="btn btn-primary btn-small" data-action="open-car" data-id="${pending[0].id}">Ответить</button></div>`:''}
@@ -707,10 +731,45 @@
       <div class="section-head"><h2>📖 Последние события</h2><span class="hint">Журнал бизнеса</span></div><div class="card">${game.history.slice(0,5).map(entry=>`<div class="logline"><div class="log-ico">${entry.icon}</div><div><strong>${entry.title}</strong><small>День ${entry.day} · ${entry.detail}</small></div></div>`).join('')}</div>
       <div class="footertext">Игровые цены вымышлены и не являются реальными рыночными оценками.</div></main>`;
     }
+
+    function world(){
+      migrateWorld();
+      const parts=Object.keys(PARTS), salaries=game.staff.reduce((a,k)=>a+(STAFF_INFO[k]?.salary||0),0);
+      return `<main class="world-page">
+        <h2 class="page-title">🌍 Мир перекупа</h2>
+        <p class="subtitle">Аукционы, клиенты, конкуренты и разборка. Все механики работают по игровым дням.</p>
+        <div class="notice"><div class="symbol">📰</div><div><strong>Новости авторынка</strong><p>${escapeHtml(game.marketNews)} · Коэффициент цен ${Math.round(game.marketFactor*100)}%. Сейчас в спросе: ${({suv:'внедорожники',sedan:'седаны',coupe:'купе',wagon:'универсалы',hatch:'хэтчбеки'})[game.hotBody]}.</p></div></div>
+        <div class="world-jump"><a href="#world-auction">🔨 Аукцион</a><a href="#world-orders">📋 Заказы</a><a href="#world-scrap">🔩 Разборка</a><a href="#world-collection">🏆 Коллекция</a></div>
+        <section id="world-auction"><div class="section-head"><h2>🔨 Автоаукционы</h2><span class="hint">Итоги завтра</span></div>
+          <p class="small muted">Ставки не списываются сразу. Если выиграешь, деньги спишутся на следующий день. Конкурент может перебить ставку.</p>
+          <div class="world-grid">${game.auctions.map(l=>`<article class="card world-car"><div class="car-image">${photoMarkup(l.car)}</div><strong>${escapeHtml(carName(l.car))}</strong><div class="small muted">${l.car.year} г. · состояние ${l.car.condition}/100</div><div class="big" style="margin:10px 0">${fmt(l.bid)}</div><div class="small muted">Ставка: ${l.playerBid?'твоя':'организатор'} · следующий шаг: ${fmt(Math.max(l.bid+10000,R(l.bid*1.08)))}</div><button class="btn btn-primary btn-block" style="margin-top:9px" data-action="auction-bid" data-id="${l.id}" ${game.money<Math.max(l.bid+10000,R(l.bid*1.08))||game.inventory.length>=capacity()?'disabled':''}>${l.playerBid?'Повысить ставку':'Сделать ставку'}</button></article>`).join('')}</div>
+        </section>
+        <section id="world-orders"><div class="section-head"><h2>📋 Заказы клиентов</h2><span class="hint">${game.orders.length} заявок</span></div>
+          <p class="small muted">Найди нужную модель, подготовь её до требуемого состояния и передай клиенту до окончания срока.</p>
+          ${game.orders.map(o=>{const m=MODELS[o.modelId], matching=game.inventory.find(c=>!c.listed&&c.modelId===o.modelId&&c.condition>=o.minCondition);
+          return `<div class="card world-order"><div class="row"><strong>${escapeHtml(o.client)} ищет машину</strong><span class="chip">${Math.max(0,o.deadline-game.day)} дн.</span></div><div class="big" style="margin:8px 0">${escapeHtml(m[0]+' '+m[1])}</div><div class="small muted">Состояние от ${o.minCondition}/100 · бюджет ${fmt(o.budget)}</div><div class="row" style="margin-top:11px"><strong class="good">Комиссия: ${fmt(o.reward)}</strong><button class="btn ${matching?'btn-primary':'btn-secondary'} btn-small" data-action="deliver-order" data-id="${o.id}" data-car="${matching?.id||''}" ${!matching?'disabled':''}>${matching?'Передать авто':'Найди авто'}</button></div></div>`}).join('')}
+        </section>
+        <section id="world-scrap"><div class="section-head"><h2>🔩 Авторазборка</h2><span class="hint">Доноры и склад</span></div>
+          <p class="small muted">Купи неисправную машину-донор, разбери её в гараже, продавай или ставь полученные запчасти на свои авто.</p>
+          <div class="world-grid">${game.scrapLots.map(o=>`<article class="card world-car"><div class="car-image">${photoMarkup(o)}</div><strong>${escapeHtml(carName(o))}</strong><div class="small muted">Состояние ${o.condition}/100 · требует ремонта</div><div class="big" style="margin:8px 0">${fmt(o.price)}</div><button class="btn btn-secondary btn-block" data-action="buy-scrap" data-id="${o.id}" ${game.money<o.price||game.inventory.length>=capacity()?'disabled':''}>Купить донора</button></article>`).join('')}</div>
+          <div class="section-head"><h2>🧰 Склад запчастей</h2></div>
+          ${parts.map(p=>`<div class="card"><div class="row"><div><strong>${PARTS[p].label}</strong><div class="small muted" style="margin-top:5px">На складе: ${game.parts[p]} шт. · ${fmt(PARTS[p].price)} за штуку</div></div><button class="btn btn-secondary btn-small" data-action="sell-part" data-value="${p}" ${!game.parts[p]?'disabled':''}>Продать</button></div></div>`).join('')}
+        </section>
+        <section id="world-rivals"><div class="section-head"><h2>⚔️ Конкуренты</h2></div>
+          <div class="card">${game.rivals.map(r=>`<div class="row world-rival"><div><strong>${escapeHtml(r.name)}</strong><div class="small muted">Сделок: ${r.deals} · участвует в аукционах</div></div><span class="chip orange">Соперник</span></div>`).join('')}</div>
+        </section>
+        <section id="world-collection"><div class="section-head"><h2>🏆 Коллекция легенд</h2><span class="hint">${game.collection.length} машин</span></div>
+          <p class="small muted">Легендарная или премиальная модель добавляется в альбом после первой покупки — даже если потом её продать.</p>
+          ${game.collection.length?game.collection.map(o=>`<div class="card"><div class="row"><strong>🏆 ${escapeHtml(o.name)}</strong><span class="chip green">День ${o.day}</span></div></div>`).join(''):`<div class="empty"><span class="emoji">🏆</span><strong>Пока нет редких машин</strong><p>Покупай BMW M5, Toyota Supra, Porsche 911 и другие легенды.</p></div>`}
+        </section>
+      </main>`;
+    }
+
     function market(){
       const filtered=game.market.filter(o=>(marketFilter==='all'||(marketFilter==='cheap'&&o.price<600000)||(marketFilter==='profit'&&o.price<fair(o)*.91)||(marketFilter==='premium'&&model(o)[4]>=2))&&carName(o).toLowerCase().includes(searchTerm.toLowerCase()));
       return `<main><h2 class="page-title">Авторынок <span style="color:var(--lime)">24/7</span></h2><p class="subtitle">Выбирай машину, проверяй скрытые дефекты и выбивай лучшую цену.</p>
-      <div class="notice"><div class="symbol">💡</div><div><strong>Совет перекупа</strong><p>Сперва проведи диагностику. Дорогой ремонт может съесть всю прибыль от сделки.</p></div></div>
+      <div class="row" style="margin:10px 0 14px"><button class="btn btn-secondary btn-block" data-action="go" data-value="world">🔨 Аукционы и заказы клиентов →</button></div>
+       <div class="notice"><div class="symbol">💡</div><div><strong>Совет перекупа</strong><p>Сперва проведи диагностику. Дорогой ремонт может съесть всю прибыль от сделки.</p></div></div>
       <div class="row" style="margin:17px 0 10px"><div><strong>${game.market.length} объявлений</strong><div class="small muted">Обновление после нового дня</div></div><button class="btn btn-outline btn-small" data-action="next-day">Новый день →</button></div>
       <input id="search-model" class="search-box" type="search" placeholder="🔎 Поиск марки или модели" value="${escapeHtml(searchTerm)}" autocomplete="off" aria-label="Поиск автомобиля">
       <div class="strip">${[['all','Все'],['cheap','До 600к'],['profit','Выгодные'],['premium','Премиум']].map(([key,title])=>`<button class="filter ${marketFilter===key?'selected':''}" data-action="filter" data-value="${key}">${title}</button>`).join('')}</div>
@@ -734,6 +793,13 @@
       <div class="section-head"><h2>🔧 Собственная СТО</h2><span class="chip blue">Этап ${game.workshopTier+1}/4</span></div>
       <div class="upgrade-card"><div class="label">ТВОЯ МАСТЕРСКАЯ</div><h3>${w.name}</h3><p>${w.desc}</p><div class="perks"><div class="perk"><i>✓</i><span>${game.workshopTier===0?'Ремонт по полной цене':'Дешевле ремонт на '+Math.round(w.discount*100)+'%'}</span></div><div class="perk"><i>✓</i><span>Обслуживание, косметика и улучшения машин</span></div>${game.workshopTier>=2?'<div class="perk"><i>✓</i><span>Собственная команда механиков</span></div>':''}</div>
       ${wNext?`<div class="divider"></div><div class="row"><div><strong>Далее: ${wNext.name}</strong><div class="small muted" style="margin-top:5px">Скидка ${Math.round(wNext.discount*100)}% · ${fmt(wNext.price)}</div></div></div><button class="btn btn-primary btn-block" style="margin-top:13px" data-action="confirm-upgrade" data-value="workshop" ${game.money<wNext.price?'disabled':''}>🛠 Построить / улучшить СТО</button>`:`<span class="chip green">🏆 Топовая мастерская!</span>`}</div>
+      
+      <div class="section-head"><h2>🏢 Автосалон</h2><span class="hint">${game.showroomTier+1}/4 уровень</span></div>
+      <div class="upgrade-card"><h3>${SHOWROOMS[game.showroomTier].name}</h3><p>Собственная витрина повышает вероятность покупателей для всех твоих объявлений.</p>
+        ${SHOWROOMS[game.showroomTier+1]?`<strong>Далее: ${SHOWROOMS[game.showroomTier+1].name}</strong><div class="small muted" style="margin:7px 0">Стоимость: ${fmt(SHOWROOMS[game.showroomTier+1].cost)} · требует гараж 3-го уровня</div><button class="btn btn-primary btn-block" data-action="upgrade-showroom" ${game.garageTier<2||game.money<SHOWROOMS[game.showroomTier+1].cost?'disabled':''}>Открыть / улучшить автосалон</button>`:'<span class="chip green">Максимальный уровень</span>'}
+      </div>
+      <div class="section-head"><h2>👨‍🔧 Команда сотрудников</h2><span class="hint">${game.staff.reduce((s,t)=>s+(STAFF_INFO[t]?.salary||0),0).toLocaleString('ru-RU')} ₽/день</span></div>
+      <div class="business-staff">${Object.entries(STAFF_INFO).map(([key,person])=>`<div class="card"><div class="row"><div><strong>${person.icon} ${person.name}</strong><div class="small muted" style="margin-top:4px">${person.perk}</div><div class="small muted" style="margin-top:3px">Найм ${fmt(person.hire)} · зарплата ${fmt(person.salary)}/день</div></div><button class="btn ${game.staff.includes(key)?'btn-outline':'btn-primary'} btn-small" data-action="${game.staff.includes(key)?'fire-staff':'hire-staff'}" data-value="${key}" ${!game.staff.includes(key)&&game.money<person.hire?'disabled':''}>${game.staff.includes(key)?'Уволить':'Нанять'}</button></div></div>`).join('')}</div>
       <div class="section-head"><h2>🧰 Мастерская</h2><span class="hint">Выбери машину</span></div>
       ${game.inventory.filter(o=>!o.listed).length?game.inventory.filter(o=>!o.listed).map(o=>`<div class="card" style="margin-bottom:9px"><div class="row"><div><strong>${carName(o)}</strong><div class="small muted" style="margin-top:3px">${o.condition}/100 состояние · ${o.known?(o.defect&&!o.defectFixed?'⚠ Есть неисправность':'Дефекты устранены'):'Без диагностики'}</div></div><button class="btn btn-secondary btn-small" data-action="open-car" data-id="${o.id}">Ремонт →</button></div></div>`).join(''):`<div class="empty"><span class="emoji">🔩</span><strong>Нет машин для ремонта</strong><p>Купи автомобиль или сними его с продажи, чтобы отправить в мастерскую.</p><button class="btn btn-secondary" data-action="go" data-value="market">Авторынок</button></div>`}</main>`;
     }
@@ -878,8 +944,8 @@
     }
     function render(){
       const y=window.scrollY;
-      document.getElementById('app').innerHTML=header()+({home,market,garage,tools,career,profile}[tab]||home)();
-      document.getElementById('nav').innerHTML=[['home','Главная','home'],['market','Рынок','market'],['garage','Гараж','garage'],['tools','СТО','tools'],['career','Карьера','career'],['profile','Профиль','profile']].map(([key,label,ic])=>`<button class="navitem ${tab===key?'active':''}" data-action="go" data-value="${key}" aria-label="${label}" aria-current="${tab===key?'page':'false'}">${ico(ic)}<span>${label}</span>${key==='garage'&&game.inventory.some(o=>o.buyerOffer)?'<span class="nav-bubble">!</span>':''}</button>`).join('');
+      document.getElementById('app').innerHTML=header()+({home,market,garage,tools,world,career,profile}[tab]||home)();
+      document.getElementById('nav').innerHTML=[['home','Главная','home'],['market','Рынок','market'],['garage','Гараж','garage'],['tools','СТО','tools'],['world','Мир','world'],['career','Карьера','career'],['profile','Профиль','profile']].map(([key,label,ic])=>`<button class="navitem ${tab===key?'active':''}" data-action="go" data-value="${key}" aria-label="${label}" aria-current="${tab===key?'page':'false'}">${ico(ic)}<span>${label}</span>${key==='garage'&&game.inventory.some(o=>o.buyerOffer)?'<span class="nav-bubble">!</span>':''}</button>`).join('');
       renderModal();
       hydratePhotos();
       try { window.scrollTo(0,y); } catch (_) {}
