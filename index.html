@@ -668,11 +668,71 @@
     function newMarket(){
       game.market=[...(game?.market||[]).filter(o=>o.adminDealId&&o.dayFound+7>=game.day),...Array.from({length:12},(_,i)=>buildOffer(i<4))];
     }
+
+    // Реальное время: каждые 30 секунд появляются три новых предложения.
+    // Игровые дни отвечают только за аукционы, заказы и покупателей твоих машин.
+    const MARKET_INTERVAL_MS=30000;
+    function ensureMarketClock(){
+      const when=Number(game.marketRefreshAt);
+      if(!Number.isFinite(when)||when<=0||when>Date.now()+MARKET_INTERVAL_MS){
+        game.marketRefreshAt=Date.now()+MARKET_INTERVAL_MS;
+        localSave();
+      }
+    }
+    function marketSecondsRemaining(){
+      return Math.max(0,Math.ceil((Number(game.marketRefreshAt||0)-Date.now())/1000));
+    }
+    function marketFiltered(){
+      return game.market.filter(o=>(marketFilter==='all'||(marketFilter==='cheap'&&o.price<600000)||(marketFilter==='profit'&&o.price<fair(o)*.91)||(marketFilter==='premium'&&model(o)[4]>=2))&&carName(o).toLowerCase().includes(searchTerm.toLowerCase()));
+    }
+    function marketResultsMarkup(offers){
+      return offers.length?`<div class="market-list">${offers.map(o=>iconCarCard(o)).join('')}</div>`:
+        `<div class="empty"><span class="emoji">🚦</span><strong>Машины не найдены</strong><p>Измени фильтр или дождись новых предложений — они появляются каждые 30 секунд.</p><button class="btn btn-secondary" data-action="filter" data-value="all">Сбросить фильтр</button></div>`;
+    }
+    function paintMarketClock(){
+      if(tab!=='market'||!game)return;
+      const countdown=document.getElementById('market-countdown');
+      if(countdown)countdown.textContent=modal&&marketSecondsRemaining()===0?'Торг · обновление после закрытия': 'Новые авто через '+marketSecondsRemaining()+' сек.';
+    }
+    function refreshMarketView(){
+      if(tab!=='market'||modal)return;
+      const results=document.getElementById('market-results');
+      if(!results)return;
+      const y=pageY();
+      results.innerHTML=marketResultsMarkup(marketFiltered());
+      const count=document.getElementById('market-count');
+      if(count)count.textContent=game.market.length+' объявлений';
+      hydratePhotos();
+      setPageY(y);
+      paintMarketClock();
+    }
+    function updateLiveMarket(){
+      const now=Date.now();
+      const regular=game.market.filter(o=>!o.adminDealId);
+      const personal=game.market.filter(o=>o.adminDealId);
+      const replaceable=regular.filter(o=>!o.inspected&&!o.vinChecked&&!o.negotiated&&!o.haggleAttempts);
+      const dropIds=new Set(replaceable.slice(-3).map(o=>o.id));
+      const surviving=regular.filter(o=>!dropIds.has(o.id));
+      const fresh=Array.from({length:3},(_,i)=>buildOffer(i===0));
+      // Старые проверенные объявления сохраняем подольше, но не копим бесконечно.
+      const normal=[...fresh,...surviving].slice(0,18);
+      game.market=[...personal,...normal];
+      game.marketRefreshAt=now+MARKET_INTERVAL_MS;
+      log('🆕','Новые объявления на авторынке','Добавлено '+fresh.length+' автомобиля · день '+game.day+' не изменился');
+      save();
+      refreshMarketView();
+    }
+    function tickMarket(){
+      if(!gameStarted||!game||!Array.isArray(game.market))return;
+      ensureMarketClock();
+      if(Date.now()>=game.marketRefreshAt&&!modal)updateLiveMarket();
+      paintMarketClock();
+    }
     function missionsInit(){return [0,1,2].map(i=>({...MISSION_POOL[i],uid:i,progress:0,done:false}));}
     function newGame(){
       nextId=1;
       game={version:1,profile:{nickname:'Перекуп',description:'Покупаю, привожу в порядок и продаю автомобили.',avatar:'🚗'},reviews:[],money:1150000,day:1,xp:0,rep:26,garageTier:0,workshopTier:0,inventory:[],market:[],sold:0,totalProfit:0,turnover:0,spent:0,earned:0,madeDeals:0,repairs:0,inspections:0,missions:missionsInit(),history:[{day:1,icon:'👋',title:'Добро пожаловать в перекуп!',detail:'Стартовый капитал — 1 150 000 ₽. Начни с первой сделки.'}],lastEvent:'',sounds:true};
-      newMarket();migrateWorld();save();
+      newMarket();migrateWorld();game.marketRefreshAt=Date.now()+MARKET_INTERVAL_MS;save();
     }
     function save(){localSave();queueCloudSave()}
     function load(){
@@ -843,14 +903,14 @@
     }
 
     function market(){
-      const filtered=game.market.filter(o=>(marketFilter==='all'||(marketFilter==='cheap'&&o.price<600000)||(marketFilter==='profit'&&o.price<fair(o)*.91)||(marketFilter==='premium'&&model(o)[4]>=2))&&carName(o).toLowerCase().includes(searchTerm.toLowerCase()));
+      const filtered=marketFiltered();
       return `<main><h2 class="page-title">Авторынок <span style="color:var(--lime)">24/7</span></h2><p class="subtitle">Выбирай машину, проверяй скрытые дефекты и выбивай лучшую цену.</p>
       <div class="row" style="margin:10px 0 14px"><button class="btn btn-secondary btn-block" data-action="go" data-value="world">🔨 Аукционы и заказы клиентов →</button></div>
        <div class="notice"><div class="symbol">💡</div><div><strong>Совет перекупа</strong><p>Сперва проведи диагностику. Дорогой ремонт может съесть всю прибыль от сделки.</p></div></div>
-      <div class="row" style="margin:17px 0 10px"><div><strong>${game.market.length} объявлений</strong><div class="small muted">Обновление после нового дня</div></div><button class="btn btn-outline btn-small" data-action="next-day">Новый день →</button></div>
+      <div class="row" style="margin:17px 0 10px"><div><strong id="market-count">${game.market.length} объявлений</strong><div class="small muted" id="market-countdown">Новые авто через ${marketSecondsRemaining()} сек.</div></div><button class="btn btn-outline btn-small" data-action="next-day">Новый день →</button></div>
       <input id="search-model" class="search-box" type="search" placeholder="🔎 Поиск марки или модели" value="${escapeHtml(searchTerm)}" autocomplete="off" aria-label="Поиск автомобиля">
       <div class="strip">${[['all','Все'],['cheap','До 600к'],['profit','Выгодные'],['premium','Премиум']].map(([key,title])=>`<button class="filter ${marketFilter===key?'selected':''}" data-action="filter" data-value="${key}">${title}</button>`).join('')}</div>
-      ${filtered.length?`<div class="market-list">${filtered.map(o=>iconCarCard(o)).join('')}</div>`:`<div class="empty"><span class="emoji">🚦</span><strong>Машины не найдены</strong><p>Попробуй другой фильтр или начни новый день.</p><button class="btn btn-secondary" data-action="filter" data-value="all">Сбросить фильтр</button></div>`}</main>`;
+      <div id="market-results">${marketResultsMarkup(filtered)}</div></main>`;
     }
     function garage(){
       const info=GARAGES[game.garageTier];
@@ -1294,14 +1354,14 @@
       if(event===0){const amt=rand(6,18)*1000;changeCash(amt);game.lastEvent='Знакомый перекуп вернул долг: +'+fmt(amt);log('🧾','Вернули долг',fmt(amt))}
       if(event===1&&game.inventory.length){const amt=rand(2,7)*1000;if(changeCash(-amt)){game.lastEvent='Незапланированные расходы на парковку: −'+fmt(amt);log('🅿️','Платная парковка','−'+fmt(amt))}}
       if(event===2){game.lastEvent='На рынке ажиотаж: особенно быстро раскупают авто с выгодной ценой.'}
-      if(event===3){game.lastEvent='Новые объявления! Не пропусти интересные варианты.'}
-      progress('day');newMarket();
+      if(event===3){game.lastEvent='Авторынок теперь обновляется автоматически каждые 30 секунд.'}
+      progress('day');
       if(Math.random()<.24){
         const targets=game.market.filter(o=>o.price<fair(o)*.90);
         if(targets.length){const candidate=targets[rand(0,targets.length-1)],enemy=game.rivals[rand(0,game.rivals.length-1)];enemy.deals++;game.market=game.market.filter(o=>o!==candidate);log('⚔️','Конкурент выкупил авто',enemy.name+' забрал '+carName(candidate)+' раньше тебя.');}
       }
       if(game.day-game.lastOrderDay>=3||game.orders.length===0)refreshOrders();
-      log('🌅','Начался день '+game.day,'Авторынок обновился. Проверь объявления.');save();render();notice('☀️ День '+game.day+' — новые предложения!');
+      log('🌅','Начался день '+game.day,'День изменился. Авторынок обновляется по таймеру.');save();render();notice('☀️ День '+game.day+'! Авторынок живёт по своему таймеру.');
     }
     function buy(i){
       const o=findOffer(i);if(!o)return;
@@ -1504,7 +1564,7 @@
       gameStarted=true;
       splashProgress(24,'Подготавливаем сохранение…');
       try{
-        load();render();
+        load();ensureMarketClock();render();
         await Promise.race([startCloud(),new Promise(resolve=>setTimeout(resolve,4500))]);
         await preloadFirstCars();
         splashProgress(100,'Всё готово! Можно играть');
@@ -1515,9 +1575,10 @@
       }finally{hideSplash()}
     }
     if('serviceWorker' in navigator&&location.protocol==='https:'){navigator.serviceWorker.register('./sw.js').catch(()=>{})}
-    document.addEventListener('visibilitychange',()=>{if(!document.hidden)checkMaintenance()});
+    document.addEventListener('visibilitychange',()=>{if(!document.hidden){checkMaintenance();tickMarket()}});
     setInterval(()=>{checkMaintenance()},45000);
     setInterval(()=>{if(cloudActive&&!document.hidden)checkCloud(false)},25000);
+    setInterval(()=>{if(!document.hidden)tickMarket()},1000);
     startGame();
   })();
   </script>
