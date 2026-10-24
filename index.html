@@ -421,7 +421,7 @@
     const num=n=>Math.round(n).toLocaleString('ru-RU');
     const model=o=>MODELS[o.modelId]||MODELS[0];
     const carName=o=>model(o)[0]+' '+model(o)[1];
-    const capacity=()=>GARAGES[game.garageTier].slots;
+    const capacity=()=>GARAGES[game.garageTier].slots+(game.extraGarageSlots||0);
     const ico=(name,cls='ic')=>`<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[name]||ICONS.home}</svg>`;
     let game,tab='home',modal=null,marketFilter='all',searchTerm='',chosenPrice={},lastToastTimer=0;
     let nextId=1;
@@ -470,6 +470,7 @@
       if(!Array.isArray(game.rivals))game.rivals=RIVAL_NAMES.map(name=>({name,deals:rand(2,9),budget:rand(1,8)*450000}));
       if(!Array.isArray(game.collection))game.collection=[];
       if(!Array.isArray(game.staff))game.staff=[];
+      game.extraGarageSlots=clamp(Math.floor(Number(game.extraGarageSlots)||0),0,100);
       if(!game.parts||typeof game.parts!=='object')game.parts={engine:0,body:0,electric:0};
       for(const k of Object.keys(PARTS))game.parts[k]=Math.max(0,Number(game.parts[k])||0);
       if(!Number.isInteger(game.showroomTier))game.showroomTier=0;
@@ -915,7 +916,7 @@
     function garage(){
       const info=GARAGES[game.garageTier];
       return `<main><h2 class="page-title">Мой гараж</h2><p class="subtitle">Твои машины, будущие продажи и путь к собственному автосалону.</p>
-      <div class="card"><div class="row"><div><div class="label">Вместимость гаража</div><div class="big" style="margin-top:6px">${game.inventory.length} / ${capacity()} мест</div></div><div class="iconbox">🏠</div></div>${paintBar(game.inventory.length/capacity()*100)}<div class="row" style="margin-top:12px"><div class="small muted">${info.name}</div><button class="btn btn-secondary btn-small" data-action="go" data-value="tools">Улучшить →</button></div></div>
+      <div class="card"><div class="row"><div><div class="label">Вместимость гаража</div><div class="big" style="margin-top:6px">${game.inventory.length} / ${capacity()} мест</div>${game.extraGarageSlots?`<div class="small muted">Дополнительных мест: +${game.extraGarageSlots}</div>`:''}</div><div class="iconbox">🏠</div></div>${paintBar(game.inventory.length/capacity()*100)}<div class="row" style="margin-top:12px"><div class="small muted">${info.name}</div><button class="btn btn-secondary btn-small" data-action="go" data-value="tools">Улучшить →</button></div></div>
       <div class="section-head"><h2>🚗 Автомобили</h2><span class="hint">${game.inventory.filter(o=>o.listed).length} выставлено</span></div>
       ${game.inventory.length?`<div class="market-list">${game.inventory.map(o=>iconCarCard(o,true)).join('')}</div>`:`<div class="empty"><span class="emoji">🏚️</span><strong>В гараже пока пусто</strong><p>Найди подходящий автомобиль на рынке, проверь его и начинай перепродажу.</p><button class="btn btn-primary" data-action="go" data-value="market">Купить первое авто</button></div>`}
       ${game.inventory.length<capacity()?`<div class="empty-slot" style="margin-top:12px"><span style="font-size:26px">${ico('plus')}</span><span>Свободных мест: ${capacity()-game.inventory.length}</span><button class="btn btn-outline btn-small" data-action="go" data-value="market">На рынок →</button></div>`:''}</main>`;
@@ -924,7 +925,7 @@
       const g=GARAGES[game.garageTier],gNext=GARAGES[game.garageTier+1],w=WORKSHOPS[game.workshopTier],wNext=WORKSHOPS[game.workshopTier+1];
       return `<main><h2 class="page-title">Гараж и СТО</h2><p class="subtitle">Увеличивай число машиномест, покупай оборудование и снижай расходы.</p>
       <div class="building"><div class="roof"></div><div class="sign">${game.workshopTier>=2?'СТО ПЕРЕКУП':'GARAGE'}</div><div class="door"></div><div class="floor"></div></div>
-      <div class="section-head"><h2>🏭 Развитие гаража</h2><span class="chip green">Уровень ${game.garageTier+1}/5</span></div>
+      <div class="section-head"><h2>🏭 Развитие гаража</h2><span class="chip green">Уровень ${game.garageTier+1}/5 · ${capacity()} мест</span></div>
       <div class="upgrade-card"><div class="label">СЕЙЧАС</div><h3>${g.name}</h3><p>${g.desc}</p><div class="progress-inline">${GARAGES.map((_,i)=>`<span class="${i<=game.garageTier?'on':''}"></span>`).join('')}</div>
       ${gNext?`<div class="divider"></div><div class="row"><div><strong>Далее: ${gNext.name}</strong><div class="small muted" style="margin-top:5px">${gNext.slots} мест · ${fmt(gNext.price)}</div></div></div><button class="btn btn-primary btn-block" style="margin-top:13px" data-action="confirm-upgrade" data-value="garage" ${game.money<gNext.price?'disabled':''}>${ico('plus')} Улучшить гараж</button>`:`<span class="chip green">🏆 Максимальный уровень!</span>`}</div>
       <div class="section-head"><h2>🔧 Собственная СТО</h2><span class="chip blue">Этап ${game.workshopTier+1}/4</span></div>
@@ -1036,6 +1037,71 @@
         return json;
       }finally{clearTimeout(timeout)}
     }
+
+    // Проверенные команды владельца: никакой произвольной замены JSON-сохранения.
+    function applyAdminControl(cmd){
+      if(!cmd||typeof cmd.kind!=='string')return false;
+      const n=Number(cmd.value);
+      const validInt=(x,low,high)=>Number.isSafeInteger(x)&&x>=low&&x<=high;
+      const named={day:'День',level:'Уровень',garage:'Гараж',workshop:'СТО',showroom:'Автосалон'};
+      let detail='';
+      switch(cmd.kind){
+        case 'day':{
+          if(!validInt(n,1,100000))return false;
+          const delta=n-game.day;
+          game.day=n;
+          // Переносим относительные игровые дедлайны: смена номера дня не прожигает сделки и аукционы.
+          const shift=(obj,key)=>{if(obj&&Number.isFinite(obj[key])&&obj[key]>0)obj[key]=Math.max(1,obj[key]+delta)};
+          for(const lot of game.auctions||[])shift(lot,'endDay');
+          for(const order of game.orders||[])shift(order,'deadline');
+          for(const car of game.market||[])shift(car,'dayFound');
+          for(const car of game.inventory||[]){
+            shift(car,'listedDay');shift(car,'promoUntil');if(car.buyerOffer)shift(car.buyerOffer,'day')
+          }
+          for(const key of ['lastOrderDay','auctionDay','scrapDay','lastPayrollDay'])shift(game,key);
+          detail='Игровой день: '+n;break;
+        }
+        case 'level':
+          if(!validInt(n,1,1000))return false;
+          game.xp=(n-1)*180;detail='Уровень игрока: '+n;break;
+        case 'garage':
+          if(!validInt(n,0,GARAGES.length-1))return false;
+          game.garageTier=n;
+          game.extraGarageSlots=clamp(Math.max(game.extraGarageSlots||0,game.inventory.length-GARAGES[n].slots),0,100);
+          detail='Гараж: '+GARAGES[n].name;break;
+        case 'workshop':
+          if(!validInt(n,0,WORKSHOPS.length-1))return false;
+          game.workshopTier=n;detail='СТО: '+WORKSHOPS[n].name;break;
+        case 'showroom':
+          if(!validInt(n,0,SHOWROOMS.length-1))return false;
+          game.showroomTier=n;detail='Автосалон: '+SHOWROOMS[n].name;break;
+        case 'slots':{
+          if(!validInt(n,1,50))return false;
+          const current=game.extraGarageSlots||0;
+          game.extraGarageSlots=clamp(current+n,0,100);
+          detail='Выдано дополнительных мест: '+(game.extraGarageSlots-current);break;
+        }
+        case 'staff':{
+          if(!Object.prototype.hasOwnProperty.call(STAFF_INFO,cmd.staff)||typeof cmd.enabled!=='boolean')return false;
+          const already=game.staff.includes(cmd.staff);
+          if(cmd.enabled&&!already)game.staff.push(cmd.staff);
+          if(!cmd.enabled&&already)game.staff=game.staff.filter(x=>x!==cmd.staff);
+          detail=STAFF_INFO[cmd.staff].name+(cmd.enabled?' нанят':' уволен');break;
+        }
+        case 'mission':{
+          const slot=Number(cmd.slot),template=Number(cmd.template),goal=Number(cmd.goal),reward=Number(cmd.reward);
+          if(!validInt(slot,0,2)||!validInt(template,0,MISSION_POOL.length-1)||!validInt(goal,1,100)||!validInt(reward,0,100000000))return false;
+          if(!Array.isArray(game.missions))game.missions=missionsInit();
+          const base=MISSION_POOL[template];
+          game.missions[slot]={...base,uid:id(),goal,reward,progress:0,done:false};
+          detail='Контракт '+(slot+1)+': '+base.title+' ('+goal+'), награда '+fmt(reward);break;
+        }
+        default:return false;
+      }
+      log('🛡️','Команда администратора',detail);
+      return true;
+    }
+
     function applyCloudActions(actions){
       if(!Array.isArray(actions)||!actions.length)return 0;
       let count=0;if(!Number.isSafeInteger(game._adminSeq))game._adminSeq=0;
@@ -1054,6 +1120,8 @@
               accident:false,odometerFraud:false,lien:false});
             log('🎁','Персональная сделка от администратора',carName(game.market[0])+' · '+fmt(b.price));count++;
           }
+        }else if(command.type==='control'){
+          if(applyAdminControl(b))count++;
         }
         game._adminSeq=seq;
       }
