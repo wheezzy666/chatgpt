@@ -163,6 +163,10 @@
     .theme-preview-black{background:#030407;--preview-accent:#80bfff;--preview-card:#191c24}
     .theme-preview-light{background:#f2f6fc;--preview-accent:#1469c4;--preview-card:#fff}
 
+    /* Удобный повторный торг и повышенные скидки */
+    .haggle-options{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:10px}
+    .haggle-choice{min-height:45px;font-size:15px;font-variant-numeric:tabular-nums;padding:10px 4px}
+    .haggle-choice:disabled{opacity:.4}
     /* Профиль игрока — шесть удобных вкладок на iPhone */
     .bottom-nav{grid-template-columns:repeat(6,minmax(0,1fr));padding-left:6px;padding-right:6px;gap:1px}
     .navitem{font-size:9px;gap:4px;padding:8px 0;letter-spacing:-.1px}
@@ -369,7 +373,7 @@
       const condition=rand(47,95);
       const defective=Math.random()<.57;
       const d=defective?DEFECTS[rand(0,DEFECTS.length-1)].id:null;
-      const o={id:id(),modelId,year,mileage,condition,defect:d,defectFixed:false,known:false,inspected:false,negotiated:false,paint:rand(0,PAINTS.length-1),improvements:[],boostCost:0,dayFound:game?game.day:1};
+      const o={id:id(),modelId,year,mileage,condition,defect:d,defectFixed:false,known:false,inspected:false,negotiated:false,haggleAttempts:0,haggleWon:false,lastHaggleResult:'',paint:rand(0,PAINTS.length-1),improvements:[],boostCost:0,dayFound:game?game.day:1};
       const f=fair(o);o.price=Math.max(25000,R(f*(.74+Math.random()*.42)));
       return o;
     }
@@ -708,7 +712,11 @@
         <div class="row" style="margin-top:10px;align-items:start"><div class="muted">${o.year} г. · ${num(o.mileage)} км</div><span class="muted">${PAINTS[o.paint][1]}</span></div>
         <div class="divider"></div><div class="row"><span class="muted">Состояние</span><strong>${o.inspected?o.condition+'/100':'По словам продавца: хорошее'}</strong></div>${o.inspected?paintBar(o.condition):''}<div class="row" style="margin-top:13px"><span class="muted">Диагностика</span><strong class="${o.inspected?(def?'bad':'good'):'warn'}">${o.inspected?(def?'⚠ '+def.title:'✓ Без скрытых дефектов'):'❔ Не проверено'}</strong></div>
         ${o.inspected?`<div class="notice"><div class="symbol">📋</div><div><strong>Отчёт по осмотру</strong><p>Оценка продажи сейчас: ~${fmt(fair(o))}. ${def?'Предполагаемый ремонт: '+fmt(serviceCost(o,'defect'))+'.':'Крупных проблем не обнаружено.'}</p></div></div>`:`<div class="notice orange"><div class="symbol">🔍</div><div><strong>Возможны скрытые поломки</strong><p>Осмотр покажет реальное состояние, дефекты и примерную рыночную стоимость.</p></div></div>`}
-        <div class="section-head"><h2>🤝 Торг с продавцом</h2><span class="hint">${o.negotiated?'Попытка использована':'Один шанс'}</span></div><div class="row" style="gap:6px">${[5,9,15].map(p=>`<button class="btn btn-secondary" style="flex:1" data-action="haggle" data-id="${o.id}" data-value="${p}" ${o.negotiated?'disabled':''}>−${p}%</button>`).join('')}</div><p class="small muted">Чем больше скидка, тем сложнее уговорить продавца. Репутация помогает.</p>
+        <div class="section-head"><h2>🤝 Торг с продавцом</h2><span class="hint">${haggleWon(o)?'Скидка получена':haggleRemaining(o)+' из 3 попыток'}</span></div>
+        ${o.lastHaggleResult==='declined'&&haggleRemaining(o)>0?'<div class="notice orange"><div class="symbol">🙅</div><div><strong>Продавец отказал</strong><p>Попробуй попросить другую скидку — у тебя ещё есть шанс договориться!</p></div></div>':''}
+        ${haggleWon(o)?'<div class="notice"><div class="symbol">✅</div><div><strong>Договорились!</strong><p>Продавец снизил цену. Можно покупать автомобиль.</p></div></div>':''}
+        <div class="haggle-options">${[5,9,15,20,25,30].map(p=>`<button class="btn btn-secondary haggle-choice" data-action="haggle" data-id="${o.id}" data-value="${p}" ${haggleRemaining(o)===0||haggleWon(o)?'disabled':''}>−${p}%</button>`).join('')}</div>
+        <p class="small muted">${haggleRemaining(o)===0&&!haggleWon(o)?'Продавец больше не торгуется. Машину можно купить по текущей цене.':'При отказе можно попробовать снова — максимум 3 попытки. Скидки 20–30% редкие, а после отказа шансы снижаются.'}</p>
         <div class="sheet-foot">${!o.inspected?`<button class="btn btn-ghost btn-block" data-action="inspect" data-id="${o.id}" ${game.money<inspectCost(o)?'disabled':''}>🔍 Осмотреть за ${fmt(inspectCost(o))}</button>`:''}
         <button class="btn btn-primary btn-block" data-action="buy" data-id="${o.id}" ${game.money<o.price||game.inventory.length>=capacity()?'disabled':''}>${game.inventory.length>=capacity()?'Нет мест в гараже':game.money<o.price?'Недостаточно денег':'Купить за '+fmt(o.price)}</button></div>`;
       }else if(modal.type==='car'){
@@ -770,10 +778,33 @@
       log('🚗','Куплен '+carName(o),'Покупка за '+fmt(o.price));save();closeModal();render();notice('🚗 Машина в твоём гараже!');
     }
     function inspect(i){const o=findOffer(i);if(!o||o.inspected)return;const cost=inspectCost(o);if(!changeCash(-cost))return notice('Не хватает денег на осмотр!',true);o.inspected=true;o.known=true;game.inspections++;xp(7);progress('inspect');log('🔍','Осмотр '+carName(o),'Диагностика за '+fmt(cost));save();render();notice('🔎 Осмотр завершён!')}
-    function haggle(i,p){const o=findOffer(i);if(!o||o.negotiated)return;
-      o.negotiated=true;const probability={5:.8,9:.52,15:.25}[p]+game.rep*.0025;
-      if(Math.random()<probability){const delta=R(o.price*p/100);o.price=Math.max(1000,o.price-delta);rep(2);xp(12);log('🤝','Торг удался!',carName(o)+' · скидка '+fmt(delta));notice('🤝 Скидка '+fmt(delta)+'!')}
-      else{rep(-1);log('🙅','Не удалось договориться',carName(o)+' · продавец отказал');notice('Продавец не согласился на скидку.',true)}save();render();
+    const MAX_HAGGLE_ATTEMPTS=3;
+    const HAGGLE_CHANCES={5:.78,9:.52,15:.29,20:.15,25:.075,30:.025};
+    function haggleCount(o){return clamp(Number.isFinite(o.haggleAttempts)?Math.floor(o.haggleAttempts):(o.negotiated?1:0),0,MAX_HAGGLE_ATTEMPTS)}
+    function haggleWon(o){return o.haggleWon===true||o.lastHaggleResult==='accepted'}
+    function haggleRemaining(o){return haggleWon(o)?0:MAX_HAGGLE_ATTEMPTS-haggleCount(o)}
+    function haggle(i,p){
+      const o=findOffer(i);
+      if(!o||!Object.prototype.hasOwnProperty.call(HAGGLE_CHANCES,p)||haggleWon(o)||haggleRemaining(o)<=0)return;
+      const previous=haggleCount(o);
+      const probability=clamp(HAGGLE_CHANCES[p]+game.rep*.0015-previous*.085,.01,.92);
+      o.haggleAttempts=previous+1;
+      o.negotiated=true;
+      if(Math.random()<probability){
+        const oldPrice=o.price,delta=Math.max(0,Math.min(oldPrice-1000,Math.max(1000,R(oldPrice*p/100))));
+        o.price=Math.max(1000,oldPrice-delta);
+        o.haggleWon=true;o.lastHaggleResult='accepted';
+        rep(2);xp(12);
+        log('🤝','Торг удался!',carName(o)+' · скидка '+p+'% ('+fmt(oldPrice-o.price)+')');
+        save();render();notice('🤝 Продавец согласился! Скидка '+fmt(oldPrice-o.price));
+      }else{
+        o.lastHaggleResult='declined';
+        rep(-1);
+        const left=haggleRemaining(o);
+        log('🙅','Продавец отказал',carName(o)+' · запрошено −'+p+'%, осталось попыток: '+left);
+        save();render();
+        notice(left>0?'🙅 Продавец отказал. Можно попросить другую скидку!':'🙅 Продавец больше не хочет торговаться.',true);
+      }
     }
     function diagnose(i){const o=findCar(i);if(!o||o.known||o.listed)return;const cost=inspectCost(o);if(!changeCash(-cost))return notice('Недостаточно денег!',true);o.boostCost+=cost;o.known=true;game.inspections++;xp(6);progress('inspect');log('🔍','Диагностика в гараже',carName(o)+' · '+fmt(cost));save();render();notice('Диагностика готова.')}
     function service(i,key){const o=findCar(i);if(!o||o.listed||!canPerformService(o,key))return;const cost=serviceCost(o,key);if(!changeCash(-cost))return notice('Недостаточно денег!',true);
