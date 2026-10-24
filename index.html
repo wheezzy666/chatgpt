@@ -666,7 +666,7 @@
     }
 
     function newMarket(){
-      game.market=Array.from({length:12},(_,i)=>buildOffer(i<4));
+      game.market=[...(game?.market||[]).filter(o=>o.adminDealId&&o.dayFound+7>=game.day),...Array.from({length:12},(_,i)=>buildOffer(i<4))];
     }
     function missionsInit(){return [0,1,2].map(i=>({...MISSION_POOL[i],uid:i,progress:0,done:false}));}
     function newGame(){
@@ -674,7 +674,7 @@
       game={version:1,profile:{nickname:'Перекуп',description:'Покупаю, привожу в порядок и продаю автомобили.',avatar:'🚗'},reviews:[],money:1150000,day:1,xp:0,rep:26,garageTier:0,workshopTier:0,inventory:[],market:[],sold:0,totalProfit:0,turnover:0,spent:0,earned:0,madeDeals:0,repairs:0,inspections:0,missions:missionsInit(),history:[{day:1,icon:'👋',title:'Добро пожаловать в перекуп!',detail:'Стартовый капитал — 1 150 000 ₽. Начни с первой сделки.'}],lastEvent:'',sounds:true};
       newMarket();migrateWorld();save();
     }
-    function save(){try{localStorage.setItem(SAVE_KEY,JSON.stringify({game,nextId}))}catch(e){}}
+    function save(){localSave();queueCloudSave()}
     function load(){
       try{
         const raw=JSON.parse(localStorage.getItem(SAVE_KEY));
@@ -957,6 +957,143 @@
   log('⭐','Новый отзыв покупателя',author+' поставил '+stars+'/5 за '+entry.model);
   return entry;
 }
+
+    const CLOUD_API='https://perekup-control-api.onrender.com';
+    const CLOUD_TOKEN_KEY='perekup_player_session';
+    let cloudToken='',cloudRev=0,cloudName='',cloudActive=false,cloudDirty=false,cloudSending=false,cloudPolling=false,cloudTimer=0;
+    try{cloudToken=localStorage.getItem(CLOUD_TOKEN_KEY)||''}catch(e){}
+    function localSave(){try{localStorage.setItem(SAVE_KEY,JSON.stringify({game,nextId}))}catch(e){}}
+    async function cloudCall(endpoint,body,overrideToken){
+      const t=overrideToken===undefined?cloudToken:overrideToken;
+      const ctrl=typeof AbortController!=='undefined'?new AbortController():null;
+      const timeout=setTimeout(()=>{if(ctrl)ctrl.abort()},12000);
+      try{
+        const response=await fetch(CLOUD_API+endpoint,{method:body?'POST':'GET',
+          headers:{'Content-Type':'application/json',...(t?{Authorization:'Bearer '+t}:{})},
+          body:body?JSON.stringify(body):undefined,mode:'cors',signal:ctrl?ctrl.signal:undefined});
+        const json=await response.json().catch(()=>({}));
+        if(!response.ok){const error=new Error(json.error||'Сервер не отвечает');error.code=response.status;error.state=json.state;throw error}
+        return json;
+      }finally{clearTimeout(timeout)}
+    }
+    function applyCloudActions(actions){
+      if(!Array.isArray(actions)||!actions.length)return 0;
+      let count=0;if(!Number.isSafeInteger(game._adminSeq))game._adminSeq=0;
+      for(const command of actions){
+        const seq=Number(command.id);if(!Number.isSafeInteger(seq)||seq<=game._adminSeq)continue;
+        const b=command.payload||{};
+        if(command.type==='balance'&&Number.isSafeInteger(b.amount)){
+          game.money=Math.max(0,game.money+b.amount);
+          log('💰','Администратор изменил баланс',(b.amount>=0?'+':'−')+fmt(Math.abs(b.amount)));count++;
+        }else if(command.type==='deal'&&MODELS[b.modelId]&&Number.isFinite(b.price)){
+          if(!game.market.some(o=>o.adminDealId===seq)){
+            game.market.unshift({id:id(),modelId:b.modelId,year:b.year,mileage:b.mileage||0,condition:b.condition||80,
+              defect:null,defectFixed:false,known:false,inspected:false,negotiated:false,haggleAttempts:0,
+              haggleWon:false,lastHaggleResult:'',paint:rand(0,PAINTS.length-1),improvements:[],boostCost:0,
+              price:b.price,dayFound:game.day,adminDealId:seq,vinChecked:false,
+              accident:false,odometerFraud:false,lien:false});
+            log('🎁','Персональная сделка от администратора',carName(game.market[0])+' · '+fmt(b.price));count++;
+          }
+        }
+        game._adminSeq=seq;
+      }
+      if(count){localSave();cloudDirty=true;render();notice('📨 Новых команд от администратора: '+count)}
+      return count;
+    }
+    function queueCloudSave(){
+      if(!cloudActive||!cloudToken)return;
+      cloudDirty=true;clearTimeout(cloudTimer);cloudTimer=setTimeout(flushCloudSave,400);
+    }
+    async function flushCloudSave(){
+      if(!cloudActive||!cloudDirty||cloudSending)return;
+      cloudSending=true;cloudDirty=false;
+      try{
+        const response=await cloudCall('/api/me/sync',{game,nextId,rev:cloudRev});
+        cloudRev=response.rev;
+        if(applyCloudActions(response.actions))cloudDirty=true;
+      }catch(err){
+        cloudDirty=true;
+        if(err.code===409&&err.state){
+          try{localStorage.setItem('perekup_cloud_conflict_backup',JSON.stringify({game,nextId}))}catch(e){}
+          game=err.state.game;nextId=err.state.nextId;cloudRev=err.state.rev;
+          migrateSocial();migrateWorld();localSave();applyCloudActions(err.state.actions);render();
+          notice('Облачное сохранение изменилось на другом устройстве. Локальная копия сохранена.',true);
+        }else if(err.code===401){
+          cloudActive=false;cloudToken='';try{localStorage.removeItem(CLOUD_TOKEN_KEY)}catch(e){}
+          notice('Онлайн-сессия закончилась. Игра работает локально.',true);
+        }
+      }finally{
+        cloudSending=false;
+        if(cloudActive&&cloudDirty){clearTimeout(cloudTimer);cloudTimer=setTimeout(flushCloudSave,2500)}
+      }
+    }
+    async function checkCloud(showError){
+      if(!cloudActive||cloudSending||cloudDirty||cloudPolling)return;
+      cloudPolling=true;
+      try{
+        const state=await cloudCall('/api/me');
+        if(state.rev!==cloudRev){
+          game=state.game;nextId=state.nextId;cloudRev=state.rev;migrateSocial();migrateWorld();
+          localSave();render();
+        }
+        if(applyCloudActions(state.actions))queueCloudSave();
+      }catch(err){
+        if(err.code===401){cloudActive=false;cloudToken='';try{localStorage.removeItem(CLOUD_TOKEN_KEY)}catch(e){}}
+        if(showError)notice('Сервер временно недоступен, игра остаётся офлайн.',true);
+      }finally{cloudPolling=false}
+    }
+    async function startCloud(){
+      if(!cloudToken)return;
+      try{
+        const state=await cloudCall('/api/me');
+        if(!state.game||state.game.version!==1)return;
+        try{localStorage.setItem('perekup_before_cloud_backup',JSON.stringify({game,nextId}))}catch(e){}
+        game=state.game;nextId=state.nextId;cloudRev=state.rev;cloudName=state.username;
+        migrateSocial();migrateWorld();cloudActive=true;localSave();render();
+        if(applyCloudActions(state.actions))queueCloudSave();
+      }catch(err){
+        if(err.code===401){cloudToken='';try{localStorage.removeItem(CLOUD_TOKEN_KEY)}catch(e){}}
+      }
+    }
+    async function cloudAuth(register){
+      const username=document.getElementById('cloud-login')?.value.trim();
+      const password=document.getElementById('cloud-password')?.value;
+      if(!username||username.length<3||!password||password.length<10)return notice('Логин от 3 символов, пароль от 10 символов.',true);
+      try{
+        const result=await cloudCall(register?'/api/register':'/api/login',
+          register?{username,password,game,nextId}:{username,password},'');
+        if(!register){try{localStorage.setItem('perekup_before_cloud_backup',JSON.stringify({game,nextId}))}catch(e){}}
+        cloudToken=result.token;localStorage.setItem(CLOUD_TOKEN_KEY,cloudToken);
+        if(register){cloudRev=result.rev;cloudName=username;cloudActive=true;localSave()}
+        else {
+          const state=await cloudCall('/api/me');
+          game=state.game;nextId=state.nextId;cloudRev=state.rev;cloudName=state.username;
+          cloudActive=true;migrateSocial();migrateWorld();localSave();
+          if(applyCloudActions(state.actions))queueCloudSave();
+        }
+        render();notice(register?'Онлайн-аккаунт создан!':'Онлайн-прогресс загружен!');
+      }catch(err){notice('Ошибка онлайн-аккаунта: '+err.message,true)}
+    }
+    function disconnectCloud(){
+      cloudActive=false;cloudToken='';cloudName='';cloudDirty=false;
+      clearTimeout(cloudTimer);try{localStorage.removeItem(CLOUD_TOKEN_KEY)}catch(e){}
+      render();notice('Онлайн-аккаунт отключён, игра продолжается локально.');
+    }
+    function cloudProfile(){
+      let html='<div class="section-head"><h2>☁️ Онлайн-аккаунт</h2></div><div class="card">';
+      if(cloudActive){
+        html+='<strong>🟢 Подключён: '+escapeHtml(cloudName)+'</strong><p class="small muted">Прогресс синхронизируется. Только подключённым игрокам администратор может отправлять деньги и персональные сделки.</p>';
+        html+='<button class="btn btn-primary btn-block" data-action="cloud-refresh">Проверить обновления</button>';
+        html+='<button class="btn btn-outline btn-block" style="margin-top:9px" data-action="cloud-disconnect">Отключить онлайн-аккаунт</button>';
+      }else{
+        html+='<strong>Играй с общим сервером</strong><p class="small muted">Необязательно. При регистрации текущий прогресс загрузится в облако; при входе загрузится сохранение твоего онлайн-аккаунта.</p>';
+        html+='<label for="cloud-login" class="profile-field-label">Логин</label><input id="cloud-login" class="profile-input" autocomplete="username" maxlength="24" placeholder="Логин игрока">';
+        html+='<label for="cloud-password" class="profile-field-label">Пароль (не менее 10 символов)</label><input id="cloud-password" class="profile-input" type="password" autocomplete="current-password" placeholder="Пароль">';
+        html+='<div class="row" style="margin-top:12px;flex-wrap:wrap"><button class="btn btn-primary" data-action="cloud-register">Зарегистрироваться</button><button class="btn btn-secondary" data-action="cloud-login">Войти</button></div>';
+      }
+      return html+'</div>';
+    }
+
     function profile(){
   migrateSocial();
   profileDraftAvatar=game.profile.avatar;
@@ -976,7 +1113,7 @@
       <div class="mini-stat"><strong>${avg}</strong><small>Средняя оценка</small></div>
       <div class="mini-stat"><strong>${reviews.length}</strong><small>Отзывов</small></div>
     </div>
-    <div class="section-head"><h2>✏️ Редактировать профиль</h2></div>
+    ${cloudProfile()}<div class="section-head"><h2>✏️ Редактировать профиль</h2></div>
     <div class="card profile-editor">
       <label for="profile-nickname" class="profile-field-label">Никнейм</label>
       <input id="profile-nickname" class="profile-input" maxlength="24" autocomplete="nickname" value="${nick}" placeholder="Твой ник">
@@ -1235,6 +1372,10 @@
       if(type==='vin-offer')return vinCheck(i,false);
       if(type==='vin-owned')return vinCheck(i,true);
       if(type==='go')return showTab(v);
+      if(type==='cloud-register')return cloudAuth(true);
+      if(type==='cloud-login')return cloudAuth(false);
+      if(type==='cloud-disconnect')return disconnectCloud();
+      if(type==='cloud-refresh')return checkCloud(true);
       if(type==='themes'){showTab('career');const el=document.getElementById('theme-settings');if(el)el.scrollIntoView({block:'start'});return;}
       if(type==='set-theme')return changeTheme(v);
       if(type==='pick-avatar')return pickAvatar(v);
@@ -1364,6 +1505,7 @@
       splashProgress(24,'Подготавливаем сохранение…');
       try{
         load();render();
+        await Promise.race([startCloud(),new Promise(resolve=>setTimeout(resolve,4500))]);
         await preloadFirstCars();
         splashProgress(100,'Всё готово! Можно играть');
         await new Promise(resolve=>setTimeout(resolve,180));
@@ -1375,6 +1517,7 @@
     if('serviceWorker' in navigator&&location.protocol==='https:'){navigator.serviceWorker.register('./sw.js').catch(()=>{})}
     document.addEventListener('visibilitychange',()=>{if(!document.hidden)checkMaintenance()});
     setInterval(()=>{checkMaintenance()},45000);
+    setInterval(()=>{if(cloudActive&&!document.hidden)checkCloud(false)},25000);
     startGame();
   })();
   </script>
