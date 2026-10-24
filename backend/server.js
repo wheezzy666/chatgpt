@@ -35,7 +35,6 @@ function jsonBody(req){return new Promise((resolve,reject)=>{if(!String(req.head
 async function init(){
  if(!pool){dbError='DATABASE_URL отсутствует';return}
  try{
-  await pool.query("CREATE EXTENSION IF NOT EXISTS pgcrypto");
   await pool.query("CREATE TABLE IF NOT EXISTS admins(id BIGSERIAL PRIMARY KEY, username TEXT UNIQUE NOT NULL, salt TEXT NOT NULL, password_hash TEXT NOT NULL, created_at TIMESTAMPTZ DEFAULT now())");
   await pool.query("CREATE TABLE IF NOT EXISTS players(id UUID PRIMARY KEY DEFAULT gen_random_uuid(), username TEXT UNIQUE NOT NULL, salt TEXT NOT NULL, password_hash TEXT NOT NULL, game JSONB NOT NULL, next_id INTEGER NOT NULL DEFAULT 1, revision INTEGER NOT NULL DEFAULT 1, created_at TIMESTAMPTZ DEFAULT now(), last_seen TIMESTAMPTZ DEFAULT now())");
   await pool.query("CREATE TABLE IF NOT EXISTS sessions(hash TEXT PRIMARY KEY, role TEXT NOT NULL, subject TEXT NOT NULL, expires_at TIMESTAMPTZ NOT NULL)");
@@ -155,6 +154,7 @@ async function route(req,res){
     const max=await cn.query("SELECT COALESCE(max(id),0)::bigint AS seq FROM admin_actions WHERE player_id=$1",[id]);
     const seq=Number(b.game._adminSeq)||0;
     if(seq>Number(max.rows[0].seq)){await cn.query('ROLLBACK');return textResponse(res,400,'Неверный номер действия')}
+    if(seq<(Number(current.rows[0].game._adminSeq)||0)){await cn.query('ROLLBACK');return textResponse(res,409,'Нельзя отменить уже применённые команды администратора')}
     const r=await cn.query("UPDATE players SET game=$2,next_id=$3,revision=revision+1,last_seen=now() WHERE id=$1 RETURNING revision",[id,b.game,Math.max(1,Math.floor(Number(b.nextId)||1))]);
     await cn.query('COMMIT');
     const result=await userState(id);return respond(res,200,{rev:r.rows[0].revision,actions:result.actions});
