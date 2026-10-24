@@ -472,6 +472,28 @@
       }
       startAuctions();
     }
+
+    function vinCost(o){return Math.max(1500,R(model(o)[2]*.006*(game.staff.includes('expert')?.5:1)))}
+    function vehicleVin(o){return 'SIM-'+String(o.modelId+1).padStart(3,'0')+'-'+String(o.id).padStart(6,'0')}
+    function vinCheck(i,owned){
+      const o=owned?findCar(i):findOffer(i);if(!o||o.vinChecked)return;
+      const fee=vinCost(o);if(!changeCash(-fee))return notice('Недостаточно денег на проверку истории!',true);
+      o.vinChecked=true;
+      if(owned)o.boostCost=(o.boostCost||0)+fee;
+      game.inspections++;progress('inspect');xp(9);
+      log('🔎','Проверена история машины',carName(o)+' · '+fmt(fee));
+      save();render();notice('🔎 Отчёт по истории авто готов!');
+    }
+    function vinCard(o,owned=false){
+      return `<div class="section-head"><h2>🔎 История автомобиля</h2><span class="hint">Игровая проверка VIN</span></div>
+      ${o.vinChecked?`<div class="card"><div class="small muted">Учебный идентификатор: ${vehicleVin(o)}</div>
+      <div class="divider"></div><div class="row"><span>ДТП</span><strong class="${o.accident?'bad':'good'}">${o.accident?'⚠ Есть отметки':'✓ Не обнаружены'}</strong></div>
+      <div class="divider"></div><div class="row"><span>Пробег</span><strong class="${o.odometerFraud?'bad':'good'}">${o.odometerFraud?'⚠ Возможна скрутка':'✓ Без подозрений'}</strong></div>
+      <div class="divider"></div><div class="row"><span>Ограничения</span><strong class="${o.lien?'bad':'good'}">${o.lien?'⚠ Есть обременение':'✓ Не обнаружены'}</strong></div>
+      <p class="small muted">Данные вымышлены и созданы для игры. Это не настоящая проверка по государственным базам.</p></div>`:
+      `<div class="notice orange"><div class="symbol">📄</div><div><strong>Расширенная диагностика</strong><p>Проверь возможные ДТП, скрутку пробега и ограничения. Отдельно от технического осмотра.</p></div></div><button class="btn btn-secondary btn-block" data-action="${owned?'vin-owned':'vin-offer'}" data-id="${o.id}" ${game.money<vinCost(o)?'disabled':''}>Получить VIN-отчёт · ${fmt(vinCost(o))}</button>`}
+      `;
+    }
     function makeOrder(){
       const pick=MODELS.map((m,i)=>({m,i})).filter(o=>o.m[4]<=2)[rand(0,Math.floor(MODELS.length*.5)-1)]||{i:0,m:MODELS[0]};
       return {id:id(),modelId:pick.i,client:ORDER_NAMES[rand(0,ORDER_NAMES.length-1)],budget:R(pick.m[2]*1.38),reward:R(Math.max(20000,pick.m[2]*.06)),minCondition:rand(55,77),deadline:game.day+5,completed:false};
@@ -966,6 +988,7 @@
         <div class="row" style="margin-top:10px;align-items:start"><div class="muted">${o.year} г. · ${num(o.mileage)} км</div><span class="muted">${PAINTS[o.paint][1]}</span></div>
         <div class="divider"></div><div class="row"><span class="muted">Состояние</span><strong>${o.inspected?o.condition+'/100':'По словам продавца: хорошее'}</strong></div>${o.inspected?paintBar(o.condition):''}<div class="row" style="margin-top:13px"><span class="muted">Диагностика</span><strong class="${o.inspected?(def?'bad':'good'):'warn'}">${o.inspected?(def?'⚠ '+def.title:'✓ Без скрытых дефектов'):'❔ Не проверено'}</strong></div>
         ${o.inspected?`<div class="notice"><div class="symbol">📋</div><div><strong>Отчёт по осмотру</strong><p>Оценка продажи сейчас: ~${fmt(fair(o))}. ${def?'Предполагаемый ремонт: '+fmt(serviceCost(o,'defect'))+'.':'Крупных проблем не обнаружено.'}</p></div></div>`:`<div class="notice orange"><div class="symbol">🔍</div><div><strong>Возможны скрытые поломки</strong><p>Осмотр покажет реальное состояние, дефекты и примерную рыночную стоимость.</p></div></div>`}
+        ${vinCard(o,false)}
         <div class="section-head"><h2>🤝 Торг с продавцом</h2><span class="hint">${haggleWon(o)?'Скидка получена':haggleRemaining(o)+' из 3 попыток'}</span></div>
         ${o.lastHaggleResult==='declined'&&haggleRemaining(o)>0?'<div class="notice orange"><div class="symbol">🙅</div><div><strong>Продавец отказал</strong><p>Попробуй попросить другую скидку — у тебя ещё есть шанс договориться!</p></div></div>':''}
         ${haggleWon(o)?'<div class="notice"><div class="symbol">✅</div><div><strong>Договорились!</strong><p>Продавец снизил цену. Можно покупать автомобиль.</p></div></div>':''}
@@ -986,8 +1009,22 @@
         ${!o.known?`<div class="notice orange"><div class="symbol">🔎</div><div><strong>Скрытые неисправности неизвестны</strong><p>Проведи диагностику, чтобы увидеть все поломки.</p></div></div><button class="btn btn-ghost btn-block" data-action="diagnose" data-id="${o.id}" ${game.money<inspectCost(o)?'disabled':''}>Диагностика · ${fmt(inspectCost(o))}</button>`:`<div class="sale-flag" style="${o.defect&&!o.defectFixed?'':'background:#21372a;border-color:#3c644b;color:#b9f0be'}">${o.defect&&!o.defectFixed?'⚠ '+defect.title+' · требуется ремонт':'✓ Критических неисправностей нет'}</div>`}
         ${o.known&&o.defect&&!o.defectFixed?`<div class="service-option"><div><strong>Устранить поломку</strong><p>${defect.title} · повысит состояние</p></div><button class="btn btn-secondary btn-small" data-action="service" data-id="${o.id}" data-value="defect" ${game.money<serviceCost(o,'defect')?'disabled':''}>${fmt(serviceCost(o,'defect'))}</button></div>`:''}
         ${SERVICES.map(s=>`<div class="service-option"><div><strong>${s.name}</strong><p>${s.desc}</p></div><button class="btn ${o.improvements.includes(s.id)?'btn-outline':'btn-secondary'} btn-small" data-action="service" data-id="${o.id}" data-value="${s.id}" ${o.improvements.includes(s.id)||game.money<serviceCost(o,s.id)?'disabled':''}>${o.improvements.includes(s.id)?'✓ Готово':fmt(serviceCost(o,s.id))}</button></div>`).join('')}
+        ${vinCard(o,true)}
         <div class="section-head"><h2>🏷️ Выставить на продажу</h2></div><p class="small muted">Выбери цену. Чем выше наценка, тем дольше ждать покупателя.</p><div class="price-choices">${options.map(([label,v])=>`<button class="price-choice ${factor===v?'active':''}" data-action="choose-price" data-id="${o.id}" data-value="${v}"><small>${label}</small><strong>${fmt(R(fair(o)*v))}</strong></button>`).join('')}</div><button class="btn btn-primary btn-block" data-action="list-car" data-id="${o.id}">📣 Разместить объявление · ${fmt(R(fair(o)*factor))}</button>`:
         `<div class="section-head"><h2>📣 Объявление активно</h2></div><div class="notice"><div class="symbol">⏳</div><div><strong>Цена: ${fmt(o.listPrice)}</strong><p>В продаже ${game.day-o.listedDay} дн. · Покупатели приходят при переходе на следующий день.</p></div></div><button class="btn btn-outline btn-block" data-action="unlist-car" data-id="${o.id}">Снять с продажи и вернуться в гараж</button>`}
+        
+         ${!o.listed?`<div class="section-head"><h2>🔩 Гараж и запчасти</h2></div>
+            <p class="small muted">Установи запчасти со склада или разбери машину на детали.</p>
+            ${Object.entries(PARTS).map(([key,part])=>`<button class="btn btn-secondary btn-block" style="margin-top:7px" data-action="use-part" data-id="${o.id}" data-value="${key}" ${!game.parts[key]?'disabled':''}>🔧 ${part.label}: ${game.parts[key]} шт. · Установить</button>`).join('')}
+            <button class="btn btn-warn btn-block" style="margin-top:12px" data-action="dismantle-car" data-id="${o.id}">♻️ Разобрать автомобиль (безвозвратно)</button>`:
+            `<div class="section-head"><h2>📣 Продвижение объявления</h2></div>
+            <div class="notice"><div class="symbol">📢</div><div><strong>${o.promoUntil>=game.day?'Объявление продвигается':'Выделить объявление'}</strong><p>${o.promoUntil>=game.day?'Активно до '+o.promoUntil+' дня включительно':'Продвижение на 2 дня повышает шанс получить предложение.'}</p></div></div>
+            <button class="btn btn-secondary btn-block" data-action="promote-car" data-id="${o.id}" ${o.promoUntil>=game.day||game.money<Math.max(7000,R(fair(o)*.011))?'disabled':''}>🚀 Продвинуть за ${fmt(Math.max(7000,R(fair(o)*.011)))}</button>
+            <div class="section-head"><h2>💬 Сообщения покупателей</h2></div>
+            ${o.messages?.length?`<div class="message-chat">${o.messages.slice(-6).map(m=>`<div class="message-bubble ${m.who==='me'?'mine':'buyer'}"><strong>${m.who==='me'?'Ты':'Покупатель'}:</strong> ${escapeHtml(m.text)}</div>`).join('')}</div>
+              <div class="row" style="margin-top:10px"><button class="btn btn-secondary btn-small" style="flex:1" data-action="chat-reply" data-id="${o.id}" data-value="honest">Позвать на осмотр</button><button class="btn btn-primary btn-small" style="flex:1" data-action="chat-reply" data-id="${o.id}" data-value="discount">Скидка 3%</button></div>`:
+              '<div class="notice"><div class="symbol">📨</div><div><strong>Сообщений пока нет</strong><p>Покупатели могут писать в следующие игровые дни.</p></div></div>'}` }
+         
         <div class="footertext">Оценка — игровая. Реальная цена сделки зависит от спроса и состояния.</div>`;
       }else if(modal.type==='confirm'){
         const typ=modal.value;
@@ -1003,12 +1040,16 @@
     }
     function nextDay(){
       game.day++;game.lastEvent='';
+      marketPulse();finishAuctions();
+      if(game.day-game.lastOrderDay>=3)refreshOrders();
+      if(game.day-game.scrapDay>=2)refreshScrap();
       for(const o of game.inventory){
         if(o.buyerOffer&&o.buyerOffer.day<game.day-1){o.buyerOffer=null}
         if(!o.listed||o.buyerOffer)continue;
         const f=fair(o),ratio=o.listPrice/f;
         let chance=ratio<=0.95 ? 0.87 : ratio<=1.01 ? 0.69 : ratio<=1.1 ? 0.48 : ratio<=1.21 ? 0.30 : 0.13;
         chance=clamp(chance+(game.rep-26)*.002+(game.showroomTier||0)*.035+(game.staff||[]).filter(s=>s==='sales').length*.10+(o.promoUntil>=game.day?.20:0)+(o.chatBoost||0),.06,.98);
+        messageBuyer(o);
         if(Math.random()<chance){
           const max=R(f*(.91+Math.random()*.14));
           const bid=Math.min(o.listPrice,Math.max(R(o.listPrice*.82),max));
@@ -1077,6 +1118,19 @@
     function upgrade(type){const arr=type==='garage'?GARAGES:WORKSHOPS,key=type==='garage'?'garageTier':'workshopTier',next=arr[game[key]+1];if(!next)return;if(!changeCash(-next.price))return notice('Недостаточно денег!',true);game[key]++;xp(40);rep(3);log('🏗️','Бизнес расширяется!',next.name+' · '+fmt(next.price));save();closeModal();render();notice('🎉 Открыто: '+next.name)}
     async function exportGame(){const data=JSON.stringify({game,nextId,exportedAt:new Date().toISOString()},null,2);try{const blob=new Blob([data],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='perekup-save-day-'+game.day+'.json';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),2500);notice('Резервная копия создана!')}catch(e){notice('Не удалось создать файл.',true)}}
     function action(type,button){const i=button.dataset.id,v=button.dataset.value;
+      if(type==='auction-bid')return auctionBid(i);
+      if(type==='deliver-order')return deliverOrder(i,button.dataset.car);
+      if(type==='buy-scrap')return buyScrap(i);
+      if(type==='sell-part')return sellPart(v);
+      if(type==='dismantle-car')return dismantleCar(i);
+      if(type==='use-part')return usePart(i,v);
+      if(type==='hire-staff')return hireEmployee(v);
+      if(type==='fire-staff')return fireEmployee(v);
+      if(type==='upgrade-showroom')return improveShowroom();
+      if(type==='promote-car')return promoteCar(i);
+      if(type==='chat-reply')return replyBuyer(i,v);
+      if(type==='vin-offer')return vinCheck(i,false);
+      if(type==='vin-owned')return vinCheck(i,true);
       if(type==='go')return showTab(v);
       if(type==='themes'){showTab('career');const el=document.getElementById('theme-settings');if(el)el.scrollIntoView({block:'start'});return;}
       if(type==='set-theme')return changeTheme(v);
