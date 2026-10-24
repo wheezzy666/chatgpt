@@ -79,6 +79,32 @@ async function route(req,res){
    const t=await sessionCreate('admin',created.rows[0].id);
    return respond(res,200,{ok:true},{'Set-Cookie':adminCookie(t)})
   }
+  if(p==='/api/admin/recover'&&method==='POST'){
+   if(!limitLogin(req))return textResponse(res,429,'Слишком много попыток. Повтори позже.');
+   if(!SETUP||SETUP.length<25)return textResponse(res,503,'Восстановление не настроено в Render.');
+   const b=await jsonBody(req);
+   if(!secretMatch(b.setupToken||'',SETUP))return textResponse(res,403,'Неверный ключ восстановления из Render.');
+   if(!safeName(b.username)||!safePassword(b.password))return textResponse(res,400,'Новый логин: 3–24 символа. Пароль: минимум 10 символов.');
+   if(b.confirm!=='RESET_ADMIN_ONLY')return textResponse(res,400,'Подтверди восстановление администратора.');
+   // Только доступ к Environment сервера позволяет сменить владельца панели.
+   // Аккаунты игроков, балансы, сделки и игровые сохранения не затрагиваются.
+   const salt=crypto.randomBytes(16).toString('hex'),hash=await passwordHash(b.password,salt);
+   const client=await pool.connect();
+   let newAdminId;
+   try{
+    await client.query('BEGIN');
+    await client.query('SELECT pg_advisory_xact_lock(7744121)');
+    await client.query("DELETE FROM sessions WHERE role='admin'");
+    await client.query('DELETE FROM admins');
+    const created=await client.query('INSERT INTO admins(username,salt,password_hash) VALUES($1,$2,$3) RETURNING id',[b.username.trim().toLowerCase(),salt,hash]);
+    newAdminId=created.rows[0].id;
+    await client.query('COMMIT');
+   }catch(e){try{await client.query('ROLLBACK')}catch(_){}throw e}
+   finally{client.release()}
+   const t=await sessionCreate('admin',newAdminId);
+   console.warn('Administrator access recovered using Render environment key; prior admin sessions revoked');
+   return respond(res,200,{ok:true,notice:'Доступ администратора восстановлен. Игровые данные не изменились.'},{'Set-Cookie':adminCookie(t)});
+  }
   if(p==='/api/admin/login'&&method==='POST'){
    if(!limitLogin(req))return textResponse(res,429,'Слишком много попыток');
    const b=await jsonBody(req),u=String(b.username||'').toLowerCase().trim();
