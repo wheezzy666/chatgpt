@@ -729,6 +729,7 @@
           if(o.pendingBuyerOffers.length>MAX_PENDING_BUYERS)o.pendingBuyerOffers.shift();
         }
         created++;
+        if(Math.random()<.18)messageBuyer(o);
         log('💬','Новый покупатель',carName(o)+' · предложение '+fmt(offer.price));
       }
       game.buyerRefreshAt=Date.now()+BUYER_INTERVAL_MS;
