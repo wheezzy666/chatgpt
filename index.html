@@ -687,7 +687,13 @@
     function createBuyerBid(o){
       const f=fair(o),ratio=o.listPrice/f;
       const spread=ratio>1.15?.79:ratio>1.04?.85:.91;
-      const wish=R(f*(spread+Math.random()*.15));
+      // Улучшения бизнеса и репутация повышают качество предложения, а не частоту таймера.
+      const reputation=clamp((game.rep-26)*.0006,-.015,.045);
+      const showroom=(game.showroomTier||0)*.015;
+      const manager=(game.staff||[]).includes('sales')?.025:0;
+      const promoted=o.promoUntil>=game.day?.045:0;
+      const buyerTrust=clamp(o.chatBoost||0,0,.30)*.15;
+      const wish=R(f*(spread+Math.random()*.15+reputation+showroom+manager+promoted+buyerTrust));
       return {price:Math.max(1000,Math.min(o.listPrice,Math.max(R(o.listPrice*.75),wish))),
         day:game.day,receivedAt:Date.now()};
     }
@@ -703,6 +709,11 @@
     }
     function refreshBuyerDisplays(){
       if(modal)return;
+      const garageButton=document.querySelector('#nav [data-value="garage"]');
+      const bubble=garageButton?.querySelector('.nav-bubble');
+      const pending=game.inventory.some(o=>o.buyerOffer);
+      if(garageButton&&pending&&!bubble)garageButton.insertAdjacentHTML('beforeend','<span class="nav-bubble">!</span>');
+      if(bubble&&!pending)bubble.remove();
       if(tab==='garage'){
         const list=document.getElementById('garage-inventory-results');
         if(list){
