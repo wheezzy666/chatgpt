@@ -5,6 +5,7 @@ const path=require('node:path');
 const crypto=require('node:crypto');
 const {promisify}=require('node:util');
 const {Pool}=require('pg');
+const telegram=require('./telegram');
 const scrypt=promisify(crypto.scrypt);
 const PORT=Number(process.env.PORT)||10000;
 const ORIGIN=process.env.GAME_ORIGIN||'https://perekup-simulator-game.onrender.com';
@@ -77,6 +78,8 @@ async function init(){
   await pool.query("CREATE TABLE IF NOT EXISTS sessions(hash TEXT PRIMARY KEY, role TEXT NOT NULL, subject TEXT NOT NULL, expires_at TIMESTAMPTZ NOT NULL)");
   await pool.query("CREATE TABLE IF NOT EXISTS admin_actions(id BIGSERIAL PRIMARY KEY, player_id UUID NOT NULL REFERENCES players(id) ON DELETE CASCADE, type TEXT NOT NULL, payload JSONB NOT NULL, created_at TIMESTAMPTZ DEFAULT now())");
   await pool.query("CREATE INDEX IF NOT EXISTS admin_actions_player ON admin_actions(player_id,id)");
+  await pool.query("ALTER TABLE players ADD COLUMN IF NOT EXISTS telegram_id TEXT");
+  await pool.query("CREATE UNIQUE INDEX IF NOT EXISTS players_telegram_id_unique ON players(telegram_id) WHERE telegram_id IS NOT NULL");
   dbReady=true;dbError='';
  }catch(e){dbError=String(e.message).slice(0,180);console.error('DB init:',dbError)}
 }
@@ -97,10 +100,17 @@ async function userState(id){
 function adminSafe(obj){const seq=Math.max(0,Number(obj.game?._adminSeq)||0);return {...obj,pendingDelta:obj.actions.filter(x=>x.type==='balance').reduce((s,x)=>s+Number(x.payload.amount||0),0),pendingCount:obj.actions.length,appliedSeq:seq}}
 async function route(req,res){
  const url=new URL(req.url,'https://backend.local'),p=url.pathname,method=req.method;
- if(p.startsWith('/api/players')||p.startsWith('/api/me')||p==='/api/register'||p==='/api/login'){cors(res);if(method==='OPTIONS')return respond(res,204,{})}
+ if(p.startsWith('/api/players')||p.startsWith('/api/me')||p==='/api/register'||p==='/api/login'||p==='/api/telegram/auth'||p==='/api/telegram/status'){cors(res);if(method==='OPTIONS')return respond(res,204,{})}
  if(method==='GET'&&p==='/'){res.writeHead(302,{Location:'/admin'});return res.end()}
  if(method==='GET'&&p==='/admin'){res.writeHead(200,{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Content-Security-Policy':"default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'self'; img-src 'self' data:; base-uri 'none'; frame-ancestors 'none'"});return res.end(adminHtml)}
  if(method==='GET'&&p==='/api/health'){return respond(res,200,{online:dbReady,dbConfigured:!!pool,error:dbReady?'':dbError,service:'perekup-admin-api'})}
+ if(p==='/api/telegram/status'&&method==='GET')return respond(res,200,{configured:!!telegram.BOT_TOKEN});
+ if(p==='/api/telegram/webhook'&&method==='POST'){
+  if(!telegram.telegramWebhookAllowed(req))return textResponse(res,403,'Forbidden');
+  const update=await jsonBody(req);
+  await telegram.handleTelegramUpdate(update);
+  return respond(res,200,{ok:true});
+ }
  if(!dbReady)return textResponse(res,503,'База данных ещё не подключена. Настрой DATABASE_URL в Render.');
  if(p.startsWith('/api/admin')){
   if(method==='POST'&&!adminOriginOk(req))return textResponse(res,403,'Invalid origin');
@@ -190,6 +200,29 @@ async function route(req,res){
   }
   return textResponse(res,404,'Не найдено');
  }
+
+ if(p==='/api/telegram/auth'&&method==='POST'){
+  if(!telegram.BOT_TOKEN)return textResponse(res,503,'Telegram-бот ещё не настроен владельцем.');
+  if(!limitLogin(req))return textResponse(res,429,'Слишком много запросов.');
+  const b=await jsonBody(req);
+  const user=telegram.validateInitData(b.initData);
+  if(!user)return textResponse(res,401,'Данные Telegram недействительны или устарели. Открой игру заново из бота.');
+  let row=await pool.query("SELECT id,username,revision FROM players WHERE telegram_id=$1",[user.id]);
+  if(!row.rows.length){
+   if(!validGame(b.game))return textResponse(res,400,'Сохранение игры не подходит для подключения.');
+   const salt=crypto.randomBytes(16).toString('hex'),hash=await passwordHash(token(),salt);
+   const initial=b.game,username='tg_'+user.id;
+   if(!initial.profile||typeof initial.profile!=='object')initial.profile={};
+   const display=(user.firstName+' '+user.lastName).trim().slice(0,24);
+   if(!initial.profile.nickname||initial.profile.nickname==='Перекуп')initial.profile.nickname=display||'Перекуп';
+   await pool.query("INSERT INTO players(username,salt,password_hash,game,next_id,telegram_id) VALUES($1,$2,$3,$4,$5,$6) ON CONFLICT DO NOTHING",
+      [username,salt,hash,initial,Math.max(1,Math.floor(Number(b.nextId)||1)),user.id]);
+   row=await pool.query("SELECT id,username,revision FROM players WHERE telegram_id=$1",[user.id]);
+   if(!row.rows.length)return textResponse(res,503,'Не удалось создать аккаунт Telegram.');
+  }
+  const access=await sessionCreate('player',row.rows[0].id);
+  return respond(res,200,{token:access,username:row.rows[0].username,rev:row.rows[0].revision});
+ }
  if(p==='/api/register'&&method==='POST'){
   if(!limitLogin(req))return textResponse(res,429,'Слишком много запросов');
   const b=await jsonBody(req);
@@ -237,4 +270,7 @@ const server=http.createServer(async(req,res)=>{
   await route(req,res);
  }catch(e){console.error('Request failed:',e.message);if(!res.headersSent)textResponse(res,e.message==='Request too large'?413:500,'Ошибка сервера');else res.end()}
 });
-init().finally(()=>server.listen(PORT,'0.0.0.0',()=>console.log('Admin API on '+PORT+'; database: '+dbReady)));
+init().finally(()=>server.listen(PORT,'0.0.0.0',()=>{
+ console.log('Admin API on '+PORT+'; database: '+dbReady);
+ telegram.configureBot().catch(e=>console.error('Telegram setup failed:',e.message));
+}));
