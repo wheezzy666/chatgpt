@@ -651,7 +651,7 @@
     }
     function replyBuyer(carId,answer){
       const o=findCar(carId);if(!o||!o.listed||!o.messages?.length)return;
-      if(answer==='discount'){o.listPrice=Math.max(1000,R(o.listPrice*.97));o.chatBoost=.24; o.messages.push({who:'me',text:'Сделаю скидку 3%, приезжайте!',day:game.day})}
+      if(answer==='discount'){o.listPrice=Math.max(1000,R(o.listPrice*.97));o.buyerOffer=cleanBuyerOffer(o,o.buyerOffer);if(Array.isArray(o.pendingBuyerOffers))o.pendingBuyerOffers=o.pendingBuyerOffers.map(b=>cleanBuyerOffer(o,b)).filter(Boolean);o.chatBoost=.24; o.messages.push({who:'me',text:'Сделаю скидку 3%, приезжайте!',day:game.day})}
       else if(answer==='honest'){o.chatBoost=.13;o.messages.push({who:'me',text:'Можете приехать на осмотр, всё расскажу.',day:game.day})}
       else return;
       log('💬','Ответил покупателю',carName(o));save();render();notice('Сообщение отправлено покупателю-боту.');
@@ -695,23 +695,29 @@
       if(!hasCarsForSale())return 0;
       return Math.max(0,Math.ceil((game.buyerRefreshAt-Date.now())/1000));
     }
+    const BUYER_PERSONAS=['Александр','Сергей','Марина','Дмитрий','Наталья','Максим','Артём','Елена'];
+    function cleanBuyerOffer(o,bid){
+      if(!bid)return null;
+      const price=Number(bid.price),cap=Math.max(1000,Math.round(Number(o.listPrice)||1000));
+      if(!Number.isFinite(price))return null;
+      bid.price=clamp(Math.round(price),1000,cap);
+      return bid;
+    }
     function createBuyerBid(o){
-      const f=fair(o),ratio=o.listPrice/f;
-      const spread=ratio>1.15?.79:ratio>1.04?.85:.91;
-      // Улучшения бизнеса и репутация повышают качество предложения, а не частоту таймера.
-      const reputation=clamp((game.rep-26)*.0006,-.015,.045);
-      const showroom=(game.showroomTier||0)*.015;
-      const manager=(game.staff||[]).includes('sales')?.025:0;
-      const promoted=o.promoUntil>=game.day?.045:0;
-      const buyerTrust=clamp(o.chatBoost||0,0,.30)*.15;
-      const wish=R(f*(spread+Math.random()*.15+reputation+showroom+manager+promoted+buyerTrust));
-      return {price:Math.max(1000,Math.min(o.listPrice,Math.max(R(o.listPrice*.75),wish))),
-        day:game.day,receivedAt:Date.now()};
+      const listed=Math.max(1000,Math.round(Number(o.listPrice)||1000));
+      const f=fair(o),ratio=listed/f;
+      // Боты предлагают полную цену или разумную скидку — ни один не может предложить больше.
+      const fullChance=clamp(.23+game.showroomTier*.07+((game.staff||[]).includes('sales')?.08:0)
+        +(o.dealerListed?.17:0)+(o.promoUntil>=game.day?.04:0),.2,.85);
+      const exact=Math.random()<fullChance;
+      const low=Math.max(1000,Math.round(listed*(ratio>1.25?.76:ratio>1.08?.81:.86)));
+      const price=exact?listed:clamp(Math.round(low+(listed-low)*Math.random()),1000,listed);
+      return {price,day:game.day,receivedAt:Date.now(),buyer:BUYER_PERSONAS[rand(0,BUYER_PERSONAS.length-1)],exact};
     }
     function queuedBuyerCount(o){return Array.isArray(o.pendingBuyerOffers)?o.pendingBuyerOffers.length:0}
     function nextBuyerInQueue(o){
       if(!Array.isArray(o.pendingBuyerOffers))o.pendingBuyerOffers=[];
-      o.buyerOffer=o.pendingBuyerOffers.shift()||null;
+      o.buyerOffer=cleanBuyerOffer(o,o.pendingBuyerOffers.shift()||null);
     }
     function refreshBuyerCountdown(){
       if(!game)return;
@@ -747,7 +753,7 @@
         if(!o.buyerOffer)o.buyerOffer=offer;
         else{
           if(!Array.isArray(o.pendingBuyerOffers))o.pendingBuyerOffers=[];
-          o.pendingBuyerOffers.push(offer);
+          o.pendingBuyerOffers.push(cleanBuyerOffer(o,offer));
           if(o.pendingBuyerOffers.length>MAX_PENDING_BUYERS)o.pendingBuyerOffers.shift();
         }
         created++;
@@ -1506,7 +1512,7 @@
         body=`<div class="sheet-top"><div><div class="label">${o.listed?'НА ПРОДАЖЕ':'В ВАШЕМ ГАРАЖЕ'}</div><h2>${carName(o)}</h2></div><button class="close" data-action="close" aria-label="Закрыть">×</button></div><div class="car-image">${photoMarkup(o)}</div>
         <div class="row"><span class="muted">Пробег · ${num(o.mileage)} км</span><span class="chip">${o.year} г.</span></div><div class="row" style="margin-top:14px"><span class="muted">Состояние</span><strong>${o.condition}/100</strong></div>${paintBar(o.condition)}
         <div class="row" style="margin-top:13px"><span class="muted">Куплено за</span><strong>${fmt(o.buyPrice)}</strong></div><div class="row" style="margin-top:9px"><span class="muted">Расходы на подготовку</span><strong>${fmt(o.boostCost)}</strong></div><div class="row" style="margin-top:9px"><span class="muted">Текущая оценка</span><strong class="good">${fmt(fair(o))}</strong></div>
-        ${o.buyerOffer?`<div class="notice"><div class="symbol">💸</div><div><strong>Покупатель предлагает ${fmt(o.buyerOffer.price)}</strong><p>Запрошено ${fmt(o.listPrice)}. Новые предложения приходят каждые 15 секунд.</p></div></div><div class="row" style="gap:8px"><button class="btn btn-primary" style="flex:1" data-action="accept-bid" data-id="${o.id}">Продать ✓</button><button class="btn btn-secondary" style="flex:1" data-action="counter-bid" data-id="${o.id}">Встречный торг</button><button class="btn btn-outline" data-action="decline-bid" data-id="${o.id}">×</button></div>${queuedBuyerCount(o)?`<div class="small muted" style="margin-top:9px">💬 В очереди ещё ${queuedBuyerCount(o)} предложений. Отклони текущее, чтобы посмотреть следующее.</div>`:""}`:''}
+        ${o.buyerOffer?`<div class="notice"><div class="symbol">💸</div><div><strong>${escapeHtml(o.buyerOffer.buyer||'Покупатель')} предлагает ${fmt(cleanBuyerOffer(o,o.buyerOffer).price)}${o.buyerOffer.exact?' · полная цена!':''}</strong><p>Запрошено ${fmt(o.listPrice)}. Новые предложения приходят каждые 15 секунд.</p></div></div><div class="row" style="gap:8px"><button class="btn btn-primary" style="flex:1" data-action="accept-bid" data-id="${o.id}">Продать ✓</button><button class="btn btn-secondary" style="flex:1" data-action="counter-bid" data-id="${o.id}">Встречный торг</button><button class="btn btn-outline" data-action="decline-bid" data-id="${o.id}">×</button></div>${queuedBuyerCount(o)?`<div class="small muted" style="margin-top:9px">💬 В очереди ещё ${queuedBuyerCount(o)} предложений. Отклони текущее, чтобы посмотреть следующее.</div>`:""}`:''}
         ${!o.listed?`<div class="section-head"><h2>🔧 Ремонт и подготовка</h2></div>
         ${!o.known?`<div class="notice orange"><div class="symbol">🔎</div><div><strong>Скрытые неисправности неизвестны</strong><p>Проведи диагностику, чтобы увидеть все поломки.</p></div></div><button class="btn btn-ghost btn-block" data-action="diagnose" data-id="${o.id}" ${game.money<inspectCost(o)?'disabled':''}>Диагностика · ${fmt(inspectCost(o))}</button>`:`<div class="sale-flag" style="${o.defect&&!o.defectFixed?'':'background:#21372a;border-color:#3c644b;color:#b9f0be'}">${o.defect&&!o.defectFixed?'⚠ '+defect.title+' · требуется ремонт':'✓ Критических неисправностей нет'}</div>`}
         ${o.known&&o.defect&&!o.defectFixed?`<div class="service-option"><div><strong>Устранить поломку</strong><p>${defect.title} · повысит состояние</p></div><button class="btn btn-secondary btn-small" data-action="service" data-id="${o.id}" data-value="defect" ${game.money<serviceCost(o,'defect')?'disabled':''}>${fmt(serviceCost(o,'defect'))}</button></div>`:''}
@@ -1604,10 +1610,10 @@
       game.repairs++;xp(12);progress('fix');log('🔧','Машина подготовлена',carName(o)+' · '+(key==='defect'?'Ремонт':'Услуга')+' '+fmt(cost));save();render();notice('🛠 Работа завершена!');
     }
     function listCar(i){const o=findCar(i);if(!o||o.listed)return;o.listed=true;o.listPrice=Math.max(1000,R(fair(o)*(chosenPrice[o.id]||1)));o.listedDay=game.day;o.buyerOffer=null;o.pendingBuyerOffers=[];ensureBuyerClock();log('📣','Машина выставлена',carName(o)+' · '+fmt(o.listPrice));xp(7);save();render();notice('📣 Авто на продаже! Первое предложение примерно через 15 секунд.')}
-    function sellCar(i){const o=findCar(i);if(!o||!o.buyerOffer)return;const amount=o.buyerOffer.price,profit=amount-o.buyPrice-o.boostCost;changeCash(amount);game.totalProfit+=profit;game.turnover+=amount;game.sold++;progress('sell');xp(50);rep(profit>0?5:1);game.inventory=game.inventory.filter(x=>x.id!==o.id);delete chosenPrice[o.id];completeOrdersOnSale(o);const newReview=createBuyerReview(o);log('💰','Продан '+carName(o),'Продажа '+fmt(amount)+' · результат '+(profit>=0?'+':'−')+fmt(Math.abs(profit)));save();closeModal();render();notice((profit>=0?'📈 Прибыль ':'📉 Убыток ')+fmt(Math.abs(profit))+(newReview?' · ⭐ Новый отзыв в профиле!':''));}
+    function sellCar(i){const o=findCar(i);if(!o||!o.buyerOffer)return;const amount=cleanBuyerOffer(o,o.buyerOffer).price,profit=amount-o.buyPrice-o.boostCost;changeCash(amount);game.totalProfit+=profit;game.turnover+=amount;game.sold++;progress('sell');xp(50);rep(profit>0?5:1);game.inventory=game.inventory.filter(x=>x.id!==o.id);delete chosenPrice[o.id];completeOrdersOnSale(o);const newReview=createBuyerReview(o);log('💰','Продан '+carName(o),'Продажа '+fmt(amount)+' · результат '+(profit>=0?'+':'−')+fmt(Math.abs(profit)));save();closeModal();render();notice((profit>=0?'📈 Прибыль ':'📉 Убыток ')+fmt(Math.abs(profit))+(newReview?' · ⭐ Новый отзыв в профиле!':''));}
     function counterBid(i){const o=findCar(i);if(!o||!o.buyerOffer)return;const current=o.buyerOffer.price;
       const chance=clamp(.48+(game.rep-26)*.004-(o.listPrice/fair(o)-1)*.25,.12,.85);
-      if(Math.random()<chance){o.buyerOffer.price=Math.min(o.listPrice,R(current*1.075));rep(1);log('🤝','Торг с клиентом успешен',carName(o)+' · теперь '+fmt(o.buyerOffer.price));notice('🤝 Покупатель повысил цену!')}
+      if(Math.random()<chance){o.buyerOffer.price=Math.min(o.listPrice,Math.max(1000,R(current*1.075)));rep(1);log('🤝','Торг с клиентом успешен',carName(o)+' · теперь '+fmt(o.buyerOffer.price));notice('🤝 Покупатель повысил цену!')}
       else{nextBuyerInQueue(o);log('🚶','Покупатель ушёл',carName(o)+' · торг не удался');notice('Покупатель отказался и ушёл.',true)}save();render();
     }
     function claimMission(uid){const m=game.missions.find(x=>x.uid===Number(uid));if(!m||m.progress<m.goal)return;changeCash(m.reward);xp(30);rep(2);log('🎯','Контракт выполнен!',m.title+' · награда '+fmt(m.reward));const idx=game.missions.indexOf(m);const newIndex=rand(0,MISSION_POOL.length-1);game.missions[idx]={...MISSION_POOL[newIndex],uid:id(),progress:0,done:false};save();render();notice('🎯 Получено '+fmt(m.reward)+'!')}
