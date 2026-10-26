@@ -66,6 +66,11 @@
 'use strict';
 const $=x=>document.getElementById(x);
 let selected=null,players=[],models=[],adminMeta=null,selectedPlayerGame=null,isSetup=false;
+function xpLevel(xp,isModern){
+ if(!isModern)return Math.floor(xp/180)+1;
+ const needed=level=>{const n=level-1;return n*360+n*(n-1)*15};
+ let level=1;while(level<1000&&needed(level+1)<=xp)level++;return level;
+}
 const money=x=>(Math.round(Number(x)||0)).toLocaleString('ru-RU')+' ₽';
 const safe=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 async function api(url,method='GET',body){
@@ -148,7 +153,7 @@ async function showPlayer(id){selected=id;
  $('selected-money').textContent=money(p.game.money);
  selectedPlayerGame=p.game;
  $('admin-day').value=p.game.day;
- $('admin-level').value=Math.floor((p.game.xp||0)/180)+1;
+ $('admin-level').value=xpLevel(p.game.xp||0,p.game.xpCurveV2===1);
  $('admin-garage').value=p.game.garageTier||0;
  $('admin-workshop').value=p.game.workshopTier||0;
  $('admin-showroom').value=p.game.showroomTier||0;
