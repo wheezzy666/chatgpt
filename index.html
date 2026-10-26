@@ -428,7 +428,7 @@
     function levelProgress(){const l=currentLevel(),lo=xpForLevel(l),hi=xpForLevel(l+1);return {level:l,earned:game.xp-lo,need:hi-lo}}
     const LEVEL_UNLOCKS={garage:[1,3,6,10,15],workshop:[1,4,8,14],showroom:[1,8,12,20],partsMarket:6};
     function canUpgrade(kind,nextTier){return currentLevel()>=(LEVEL_UNLOCKS[kind]?.[nextTier]??9999)}
-    function gateMessage(kind,nextTier){return '🔒 Требуется уровень '+(LEVEL_UNLOCKS[kind]?.[nextTier]||1)}
+    function gateMessage(kind,nextTier){return canUpgrade(kind,nextTier)?'✅ Уровень подходит':'🔒 Требуется уровень '+(LEVEL_UNLOCKS[kind]?.[nextTier]||1)}
     function migrateExperience(){if(game.xpCurveV2===1)return;const old=Math.max(0,Number(game.xp)||0),lvl=clamp(Math.floor(old/180)+1,1,1000),part=(old%180)/180;game.xp=Math.floor(xpForLevel(lvl)+part*(xpForLevel(lvl+1)-xpForLevel(lvl)));game.xpCurveV2=1}
     const capacity=()=>GARAGES[game.garageTier].slots+(game.extraGarageSlots||0);
     const ico=(name,cls='ic')=>`<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[name]||ICONS.home}</svg>`;
@@ -682,7 +682,7 @@
       game.dealerSupplyAt=Date.now()+90000;
     }
     function ensureDealerSupply(){
-      if(game.showroomTier>=2&&(!Array.isArray(game.dealerSupply)||!game.dealerSupply.length||!Number.isFinite(game.dealerSupplyAt)))
+      if(game.showroomTier>=2&&(!Array.isArray(game.dealerSupply)||!Number.isFinite(game.dealerSupplyAt)||game.dealerSupplyAt<=0))
         renewDealerSupply();
     }
     function buyDealerCar(carId){
@@ -1772,7 +1772,7 @@
     function sellCar(i){const o=findCar(i);if(!o||!o.buyerOffer)return;const amount=cleanBuyerOffer(o,o.buyerOffer).price,profit=amount-o.buyPrice-o.boostCost;changeCash(amount);game.totalProfit+=profit;game.turnover+=amount;game.sold++;progress('sell');xp(50);rep(profit>0?5:1);game.inventory=game.inventory.filter(x=>x.id!==o.id);delete chosenPrice[o.id];completeOrdersOnSale(o);const newReview=createBuyerReview(o);log('💰','Продан '+carName(o),'Продажа '+fmt(amount)+' · результат '+(profit>=0?'+':'−')+fmt(Math.abs(profit)));save();closeModal();render();notice((profit>=0?'📈 Прибыль ':'📉 Убыток ')+fmt(Math.abs(profit))+(newReview?' · ⭐ Новый отзыв в профиле!':''));}
     function counterBid(i){const o=findCar(i);if(!o||!o.buyerOffer)return;const current=o.buyerOffer.price;
       const chance=clamp(.48+(game.rep-26)*.004-(o.listPrice/fair(o)-1)*.25,.12,.85);
-      if(Math.random()<chance){o.buyerOffer.price=Math.min(o.listPrice,Math.max(1000,R(current*1.075)));rep(1);log('🤝','Торг с клиентом успешен',carName(o)+' · теперь '+fmt(o.buyerOffer.price));notice('🤝 Покупатель повысил цену!')}
+      if(current>=o.listPrice){notice('Покупатель уже предлагает полную цену!',true);return}if(Math.random()<chance){o.buyerOffer.price=Math.min(o.listPrice,Math.max(1000,R(current*1.075)));rep(1);log('🤝','Торг с клиентом успешен',carName(o)+' · теперь '+fmt(o.buyerOffer.price));notice('🤝 Покупатель повысил цену!')}
       else{nextBuyerInQueue(o);log('🚶','Покупатель ушёл',carName(o)+' · торг не удался');notice('Покупатель отказался и ушёл.',true)}save();render();
     }
     function claimMission(uid){const m=game.missions.find(x=>x.uid===Number(uid));if(!m||m.progress<m.goal)return;changeCash(m.reward);xp(30);rep(2);log('🎯','Контракт выполнен!',m.title+' · награда '+fmt(m.reward));const idx=game.missions.indexOf(m);const newIndex=rand(0,MISSION_POOL.length-1);game.missions[idx]={...MISSION_POOL[newIndex],uid:id(),progress:0,done:false};save();render();notice('🎯 Получено '+fmt(m.reward)+'!')}
@@ -1818,7 +1818,7 @@
       if(type==='service')return service(i,v);
       if(type==='choose-price'){chosenPrice[i]=Number(v);renderModal();return}
       if(type==='list-car')return listCar(i);
-      if(type==='unlist-car'){const o=findCar(i);if(!o)return;o.listed=false;o.buyerOffer=null;o.pendingBuyerOffers=[];ensureBuyerClock();save();render();notice('Машина снята с продажи.');return}
+      if(type==='unlist-car'){const o=findCar(i);if(!o)return;o.listed=false;o.dealerListed=false;o.buyerOffer=null;o.pendingBuyerOffers=[];ensureBuyerClock();save();render();notice('Машина снята с продажи.');return}
       if(type==='accept-bid')return sellCar(i);
       if(type==='counter-bid')return counterBid(i);
       if(type==='decline-bid'){const o=findCar(i);if(o){nextBuyerInQueue(o);save();render();notice(o.buyerOffer?'Следующий покупатель уже ждёт!':'Предложение отклонено. Следующее придёт по таймеру.')}return}
