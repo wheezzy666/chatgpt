@@ -1365,6 +1365,7 @@
       try{
         const response=await cloudCall('/api/me/sync',{game,nextId,rev:cloudRev});
         cloudRev=response.rev;
+        try{localStorage.setItem('perekup_cloud_last_rev',String(cloudRev))}catch(e){}
         cloudLastSync=Date.now();
         try{localStorage.removeItem('perekup_cloud_pending_v1')}catch(e){}
         if(applyCloudActions(response.actions))cloudDirty=true;
@@ -1404,10 +1405,28 @@
       try{
         const state=await cloudCall('/api/me');
         if(!state.game||state.game.version!==1)return;
-        try{localStorage.setItem('perekup_before_cloud_backup',JSON.stringify({game,nextId}))}catch(e){}
-        game=state.game;nextId=state.nextId;cloudRev=state.rev;cloudName=state.username;
-        migrateSocial();migrateWorld();cloudActive=true;cloudLastSync=Date.now();localSave();render();
+        const pending=localStorage.getItem('perekup_cloud_pending_v1')==='1';
+        const prevRev=Number(localStorage.getItem('perekup_cloud_last_rev'));
+        const localSnapshot=JSON.stringify({game,nextId});
+        try{localStorage.setItem('perekup_before_cloud_backup',localSnapshot)}catch(e){}
+        let retainLocal=false;
+        if(pending){
+          // Изменения вне сети нельзя стирать одним входом. При конфликте спросим игрока.
+          retainLocal=state.rev===prevRev;
+          if(!retainLocal&&typeof window.confirm==='function'){
+            retainLocal=window.confirm('На устройстве есть несохранённый в облаке прогресс. Отправить его на сервер? Отмена — загрузить облачный прогресс.');
+          }
+        }
+        cloudRev=state.rev;cloudName=state.username;cloudActive=true;cloudLastSync=Date.now();
+        if(!retainLocal){
+          game=state.game;nextId=state.nextId;
+          migrateSocial();migrateWorld();
+          try{localStorage.removeItem('perekup_cloud_pending_v1')}catch(e){}
+        }
+        localSave();render();
         if(applyCloudActions(state.actions))queueCloudSave();
+        if(retainLocal)queueCloudSave();
+        else try{localStorage.setItem('perekup_cloud_last_rev',String(cloudRev))}catch(e){}
       }catch(err){
         if(err.code===401){cloudToken='';try{localStorage.removeItem(CLOUD_TOKEN_KEY)}catch(e){}}
       }
@@ -1471,6 +1490,7 @@
         if(!state.game||state.game.version!==1)throw Error('Сервер не вернул прогресс');
         try{localStorage.setItem('perekup_before_cloud_backup',localSnapshot)}catch(e){}
         cloudToken=result.token;cloudRev=state.rev;cloudName=state.username;cloudActive=true;
+        try{localStorage.setItem('perekup_cloud_last_rev',String(cloudRev));localStorage.removeItem('perekup_cloud_pending_v1')}catch(e){}
         localStorage.setItem(CLOUD_TOKEN_KEY,cloudToken);
         if(!register){
           game=state.game;nextId=state.nextId;migrateSocial();migrateWorld();
@@ -1490,7 +1510,7 @@
     }
     function disconnectCloud(){
       cloudActive=false;cloudToken='';cloudName='';cloudDirty=false;
-      clearTimeout(cloudTimer);try{localStorage.removeItem(CLOUD_TOKEN_KEY)}catch(e){}
+      clearTimeout(cloudTimer);try{localStorage.removeItem(CLOUD_TOKEN_KEY);localStorage.removeItem('perekup_cloud_pending_v1');localStorage.removeItem('perekup_cloud_last_rev')}catch(e){}
       render();notice('Онлайн-аккаунт отключён, игра продолжается локально.');
     }
     function cloudProfile(){
