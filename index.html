@@ -11,6 +11,7 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="apple-touch-icon" href="icon.svg">
   <title>Симулятор перекупа — реальные фото авто</title>
+  <script src="https://telegram.org/js/telegram-web-app.js?64" defer></script>
   <script>
     (function(){
       var theme='blue';
@@ -1272,6 +1273,48 @@
         if(err.code===401){cloudToken='';try{localStorage.removeItem(CLOUD_TOKEN_KEY)}catch(e){}}
       }
     }
+
+    /* Telegram Mini App: используем только initData, проверяемые сервером.
+       Обычная веб-версия остаётся без изменений. */
+    let telegramMode=false,telegramProblem='';
+    function telegramClient(){
+      const tg=window.Telegram?.WebApp;
+      if(!tg||!tg.initData)return null;
+      telegramMode=true;
+      try{
+        tg.ready();tg.expand();
+        if(!localStorage.getItem('perekup_theme_v1')){
+          const value=tg.colorScheme==='light'?'light':'black';
+          document.documentElement.setAttribute('data-theme',value);
+          const meta=document.querySelector('meta[name="theme-color"]');
+          if(meta)meta.content=value==='light'?'#f2f6fc':'#030407';
+        }
+      }catch(e){}
+      return tg;
+    }
+    async function startTelegramCloud(){
+      if(location.search?.includes('tg=1')&&document.readyState==='loading'){
+        await new Promise(resolve=>document.addEventListener('DOMContentLoaded',resolve,{once:true}));
+      }
+      const tg=telegramClient();
+      if(!tg)return startCloud();
+      // Если игрок вручную вошёл в другой облачный аккаунт внутри Telegram,
+      // не заменяем его сохранение без подтверждения.
+      if(cloudToken)return startCloud();
+      try{
+        const reply=await cloudCall('/api/telegram/auth',{initData:tg.initData,game,nextId},'');
+        cloudToken=reply.token;
+        localStorage.setItem(CLOUD_TOKEN_KEY,cloudToken);
+        await startCloud();
+        if(!cloudActive)throw Error('Сохранение не удалось загрузить');
+        cloudName='Telegram · '+(tg.initDataUnsafe?.user?.first_name||'Игрок');
+        telegramProblem='';
+        render();
+      }catch(error){
+        telegramProblem=error.message||'Не удалось подключиться к серверу Telegram';
+        console.warn('Telegram Mini App: cloud connection unavailable; local game remains playable');
+      }
+    }
     async function cloudAuth(register){
       const username=document.getElementById('cloud-login')?.value.trim();
       const password=document.getElementById('cloud-password')?.value;
@@ -1303,6 +1346,7 @@
         html+='<button class="btn btn-primary btn-block" data-action="cloud-refresh">Проверить обновления</button>';
         html+='<button class="btn btn-outline btn-block" style="margin-top:9px" data-action="cloud-disconnect">Отключить онлайн-аккаунт</button>';
       }else{
+        if(telegramMode&&telegramProblem)html+='<p class="small muted">⚠️ Telegram: '+escapeHtml(telegramProblem)+'</p>';
         html+='<strong>Играй с общим сервером</strong><p class="small muted">Необязательно. При регистрации текущий прогресс загрузится в облако; при входе загрузится сохранение твоего онлайн-аккаунта.</p>';
         html+='<label for="cloud-login" class="profile-field-label">Логин</label><input id="cloud-login" class="profile-input" autocomplete="username" maxlength="24" placeholder="Логин игрока">';
         html+='<label for="cloud-password" class="profile-field-label">Пароль (не менее 10 символов)</label><input id="cloud-password" class="profile-input" type="password" autocomplete="current-password" placeholder="Пароль">';
@@ -1708,7 +1752,7 @@
       splashProgress(24,'Подготавливаем сохранение…');
       try{
         load();ensureMarketClock();ensureBuyerClock();render();
-        await Promise.race([startCloud(),new Promise(resolve=>setTimeout(resolve,4500))]);
+        await Promise.race([startTelegramCloud(),new Promise(resolve=>setTimeout(resolve,6000))]);
         await preloadFirstCars();
         splashProgress(100,'Всё готово! Можно играть');
         await new Promise(resolve=>setTimeout(resolve,180));
