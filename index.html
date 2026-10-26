@@ -447,9 +447,10 @@
       const conditionFactor=.55+o.condition*.00625;
       const defectFactor=(o.defect && !o.defectFixed) ? 0.82 : 1;
       const improvementsFactor=o.improvements?.includes('tune')?1.06:1;
+      const engineFactor=ENGINE_SWAPS[o.engineSwap]?.bonus||0;
       const historyFactor=(o.odometerFraud?.92:1)*(o.accident?.92:1)*(o.lien?.91:1);
       const demand=(game&&game.marketFactor||1)*(game&&game.hotBody===m[3]?1.08:1);
-      return Math.max(30000,R(m[2]*ageFactor*mileageFactor*conditionFactor*defectFactor*improvementsFactor*historyFactor*demand));
+      return Math.max(30000,R(m[2]*ageFactor*mileageFactor*conditionFactor*defectFactor*improvementsFactor*(1+engineFactor)*historyFactor*demand));
     }
     function buildOffer(forceCheap=false){
       const modelId=modelIndex(forceCheap?0:undefined),m=MODELS[modelId];
@@ -480,6 +481,13 @@
       if(!Array.isArray(game.collection))game.collection=[];
       migrateExperience();
       if(!Array.isArray(game.staff))game.staff=[];
+      if(!game.engineKits||typeof game.engineKits!=='object')game.engineKits={economy:0,turbo:0,sport:0};
+      for(const k of Object.keys(ENGINE_SWAPS))game.engineKits[k]=Math.max(0,Number(game.engineKits[k])||0);
+      if(!Array.isArray(game.partsMarketOffers))game.partsMarketOffers=[];
+      if(!Number.isFinite(game.partsMarketAt))game.partsMarketAt=0;
+      if(!Array.isArray(game.dealerSupply))game.dealerSupply=[];
+      if(!Number.isFinite(game.dealerSupplyAt))game.dealerSupplyAt=0;
+      for(const car of game.inventory){if(!car.dealerListed)car.dealerListed=false}
       game.extraGarageSlots=clamp(Math.floor(Number(game.extraGarageSlots)||0),0,100);
       if(!game.parts||typeof game.parts!=='object')game.parts={engine:0,body:0,electric:0};
       for(const k of Object.keys(PARTS))game.parts[k]=Math.max(0,Number(game.parts[k])||0);
@@ -620,6 +628,93 @@
       log('🔧','Установлена запчасть',PARTS[type].label+' · '+carName(o));
       save();closeModal();render();notice('Запчасть установлена!');
     }
+    const ENGINE_SWAPS={
+      economy:{label:'Надёжный двигатель 2.0',normal:125000,bonus:.09,condition:12},
+      turbo:{label:'Турбомотор 2.0T',normal:230000,bonus:.16,condition:16},
+      sport:{label:'Спортивный двигатель V6',normal:385000,bonus:.24,condition:19}
+    };
+    const PARTS_MARKET_INTERVAL_MS=60000;
+    function renewPartsMarket(){
+      const catalog=[...Object.keys(PARTS).map(key=>({kind:'part',key,label:PARTS[key].label,normal:PARTS[key].price})),
+        ...Object.entries(ENGINE_SWAPS).map(([key,s])=>({kind:'swap',key,label:s.label,normal:s.normal}))];
+      game.partsMarketOffers=catalog.map(c=>({...c,id:id(),price:Math.max(1000,R(c.normal*(.64+Math.random()*.15))),stock:rand(1,4)}));
+      game.partsMarketAt=Date.now()+PARTS_MARKET_INTERVAL_MS;
+    }
+    function ensurePartsMarket(){
+      if(!Array.isArray(game.partsMarketOffers)||!game.partsMarketOffers.length||!Number.isFinite(game.partsMarketAt)){
+        renewPartsMarket();
+      }
+    }
+    function buyMarketPart(offerId){
+      if(currentLevel()<LEVEL_UNLOCKS.partsMarket)return notice('Рынок запчастей откроется на уровне '+LEVEL_UNLOCKS.partsMarket,true);
+      ensurePartsMarket();
+      const lot=game.partsMarketOffers.find(x=>x.id===Number(offerId));
+      if(!lot||lot.stock<1)return notice('Этот товар раскуплен.',true);
+      if(!PARTS[lot.key]&&!ENGINE_SWAPS[lot.key])return;
+      if(!changeCash(-lot.price))return notice('Недостаточно денег.',true);
+      if(lot.kind==='part'){game.parts[lot.key]=(game.parts[lot.key]||0)+1}
+      else{game.engineKits[lot.key]=(game.engineKits[lot.key]||0)+1}
+      lot.stock--;
+      log('🧰','Покупка на рынке запчастей',lot.label+' · '+fmt(lot.price));
+      save();render();notice('🧰 Куплено: '+lot.label);
+    }
+    function swapCarEngine(carId,kitId){
+      if(currentLevel()<LEVEL_UNLOCKS.partsMarket||game.workshopTier<1)
+        return notice('Для свапа нужны 6 уровень и хотя бы свой подъёмник.',true);
+      const car=findCar(carId),kit=ENGINE_SWAPS[kitId];
+      if(!car||car.listed||car.engineSwap||!kit||(game.engineKits[kitId]||0)<1)return notice('Нужен свободный автомобиль и комплект двигателя.',true);
+      game.engineKits[kitId]--;
+      car.engineSwap=kitId;
+      car.condition=Math.min(100,car.condition+kit.condition);
+      if(car.defect==='engine')car.defectFixed=true;
+      car.known=true;game.repairs++;progress('fix');xp(25);
+      log('🏎️','Свап двигателя',carName(car)+' · '+kit.label);
+      save();closeModal();render();notice('🏎️ Свап установлен! Рыночная стоимость выросла.');
+    }
+    function renewDealerSupply(){
+      if(game.showroomTier<2)return;
+      game.dealerSupply=Array.from({length:Math.min(5,2+game.showroomTier)},(_,i)=>{
+        const car=buildOffer(i===0);
+        car.price=Math.max(25000,R(fair(car)*(.66+Math.random()*.17)));
+        car.dealerWholesale=true;
+        return car;
+      });
+      game.dealerSupplyAt=Date.now()+90000;
+    }
+    function ensureDealerSupply(){
+      if(game.showroomTier>=2&&(!Array.isArray(game.dealerSupply)||!game.dealerSupply.length||!Number.isFinite(game.dealerSupplyAt)))
+        renewDealerSupply();
+    }
+    function buyDealerCar(carId){
+      if(game.showroomTier<2)return notice('Открой полноценный автосалон.',true);
+      ensureDealerSupply();
+      const offer=game.dealerSupply.find(o=>o.id===Number(carId));
+      if(!offer)return notice('Автомобиль уже выкуплен.',true);
+      if(game.inventory.length>=capacity())return notice('Недостаточно мест в гараже.',true);
+      if(!changeCash(-offer.price))return notice('Недостаточно денег для закупки.',true);
+      offer.buyPrice=offer.price;offer.boostCost=0;offer.listed=false;offer.dealerListed=false;
+      offer.listPrice=0;offer.listedDay=0;offer.buyerOffer=null;offer.pendingBuyerOffers=[];
+      offer.known=true;offer.inspected=true;offer.dealerSource=true;
+      game.inventory.unshift(offer);game.dealerSupply=game.dealerSupply.filter(o=>o!==offer);
+      game.madeDeals++;progress('buy');xp(15);
+      log('🏢','Закуплен автомобиль для салона',carName(offer)+' · '+fmt(offer.price));
+      save();render();notice('🏢 Автомобиль куплен и добавлен в гараж!');
+    }
+    function placeInShowroom(carId){
+      const car=findCar(carId);
+      if(!car||game.showroomTier<2)return notice('Полноценный автосалон ещё не открыт.',true);
+      const max=game.showroomTier===2?3:6;
+      if(!car.dealerListed&&game.inventory.filter(o=>o.dealerListed).length>=max)
+        return notice('Витрина заполнена: максимум '+max+' машин.',true);
+      if(car.dealerListed)return;
+      car.listed=true;car.dealerListed=true;
+      car.listPrice=Math.max(1000,R(fair(car)*(chosenPrice[car.id]||1)*1.08));
+      car.listedDay=game.day;car.buyerOffer=null;car.pendingBuyerOffers=[];
+      ensureBuyerClock();xp(9);
+      log('🏢','Автомобиль выставлен в салоне',carName(car)+' · '+fmt(car.listPrice));
+      save();closeModal();render();notice('🏢 Авто на витрине. Покупатели придут каждые 15 секунд.');
+    }
+
     function hireEmployee(type){
       const staff=STAFF_INFO[type];if(!staff||game.staff.includes(type))return;
       if(!changeCash(-staff.hire))return notice('Не хватает денег для найма.',true);
@@ -830,6 +925,14 @@
       ensureMarketClock();
       if(Date.now()>=game.marketRefreshAt&&!modal)updateLiveMarket();
       paintMarketClock();
+      if(currentLevel()>=LEVEL_UNLOCKS.partsMarket){
+        ensurePartsMarket();
+        if(Date.now()>=game.partsMarketAt&&!modal){renewPartsMarket();save();if(tab==='tools')render()}
+      }
+      if(game.showroomTier>=2){
+        ensureDealerSupply();
+        if(Date.now()>=game.dealerSupplyAt&&!modal){renewDealerSupply();save();if(tab==='tools')render()}
+      }
     }
     function missionsInit(){return [0,1,2].map(i=>({...MISSION_POOL[i],uid:i,progress:0,done:false}));}
     function newGame(){
