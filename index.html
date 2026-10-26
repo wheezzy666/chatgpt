@@ -1245,7 +1245,7 @@
 
     const CLOUD_API='https://perekup-control-api.onrender.com';
     const CLOUD_TOKEN_KEY='perekup_player_session';
-    let cloudToken='',cloudRev=0,cloudName='',cloudActive=false,cloudDirty=false,cloudSending=false,cloudPolling=false,cloudTimer=0;
+    let cloudToken='',cloudRev=0,cloudName='',cloudActive=false,cloudDirty=false,cloudSending=false,cloudPolling=false,cloudTimer=0,cloudLastSync=0;
     try{cloudToken=localStorage.getItem(CLOUD_TOKEN_KEY)||''}catch(e){}
     function localSave(){try{localStorage.setItem(SAVE_KEY,JSON.stringify({game,nextId}))}catch(e){}}
     async function cloudCall(endpoint,body,overrideToken){
@@ -1356,7 +1356,8 @@
     }
     function queueCloudSave(){
       if(!cloudActive||!cloudToken)return;
-      cloudDirty=true;clearTimeout(cloudTimer);cloudTimer=setTimeout(flushCloudSave,400);
+      cloudDirty=true;try{localStorage.setItem('perekup_cloud_pending_v1','1')}catch(e){}
+      clearTimeout(cloudTimer);cloudTimer=setTimeout(flushCloudSave,400);
     }
     async function flushCloudSave(){
       if(!cloudActive||!cloudDirty||cloudSending)return;
@@ -1364,6 +1365,8 @@
       try{
         const response=await cloudCall('/api/me/sync',{game,nextId,rev:cloudRev});
         cloudRev=response.rev;
+        cloudLastSync=Date.now();
+        try{localStorage.removeItem('perekup_cloud_pending_v1')}catch(e){}
         if(applyCloudActions(response.actions))cloudDirty=true;
       }catch(err){
         cloudDirty=true;
@@ -1403,7 +1406,7 @@
         if(!state.game||state.game.version!==1)return;
         try{localStorage.setItem('perekup_before_cloud_backup',JSON.stringify({game,nextId}))}catch(e){}
         game=state.game;nextId=state.nextId;cloudRev=state.rev;cloudName=state.username;
-        migrateSocial();migrateWorld();cloudActive=true;localSave();render();
+        migrateSocial();migrateWorld();cloudActive=true;cloudLastSync=Date.now();localSave();render();
         if(applyCloudActions(state.actions))queueCloudSave();
       }catch(err){
         if(err.code===401){cloudToken='';try{localStorage.removeItem(CLOUD_TOKEN_KEY)}catch(e){}}
@@ -1455,20 +1458,35 @@
       const username=document.getElementById('cloud-login')?.value.trim();
       const password=document.getElementById('cloud-password')?.value;
       if(!username||username.length<3||!password||password.length<10)return notice('Логин от 3 символов, пароль от 10 символов.',true);
+      const localSnapshot=JSON.stringify({game,nextId});
+      const button=document.querySelector('[data-action="'+(register?'cloud-register':'cloud-login')+'"]');
+      if(button)button.disabled=true;
       try{
+        // При регистрации отправляем текущее сохранение на сервер, при входе загружаем облако.
         const result=await cloudCall(register?'/api/register':'/api/login',
           register?{username,password,game,nextId}:{username,password},'');
-        if(!register){try{localStorage.setItem('perekup_before_cloud_backup',JSON.stringify({game,nextId}))}catch(e){}}
-        cloudToken=result.token;localStorage.setItem(CLOUD_TOKEN_KEY,cloudToken);
-        if(register){cloudRev=result.rev;cloudName=username;cloudActive=true;localSave()}
-        else {
-          const state=await cloudCall('/api/me');
-          game=state.game;nextId=state.nextId;cloudRev=state.rev;cloudName=state.username;
-          cloudActive=true;migrateSocial();migrateWorld();localSave();
-          if(applyCloudActions(state.actions))queueCloudSave();
+        if(!result.token)throw Error('Сервер не вернул ключ авторизации');
+        // Проверяем, что аккаунт действительно создан и сохранение доступно, до замены токена.
+        const state=await cloudCall('/api/me',undefined,result.token);
+        if(!state.game||state.game.version!==1)throw Error('Сервер не вернул прогресс');
+        try{localStorage.setItem('perekup_before_cloud_backup',localSnapshot)}catch(e){}
+        cloudToken=result.token;cloudRev=state.rev;cloudName=state.username;cloudActive=true;
+        localStorage.setItem(CLOUD_TOKEN_KEY,cloudToken);
+        if(!register){
+          game=state.game;nextId=state.nextId;migrateSocial();migrateWorld();
+        }else if(JSON.stringify({game,nextId})===localSnapshot){
+          game=state.game;nextId=state.nextId;migrateSocial();migrateWorld();
+        }else{
+          // Игрок успел сделать действие, пока запрос шёл: сразу отправим свежий прогресс.
+          cloudDirty=true;
         }
-        render();notice(register?'Онлайн-аккаунт создан!':'Онлайн-прогресс загружен!');
+        localSave();
+        if(applyCloudActions(state.actions))queueCloudSave();
+        if(cloudDirty)queueCloudSave();
+        render();
+        notice(register?'✅ Аккаунт создан, сохранение синхронизировано!':'✅ Вход выполнен, облачный прогресс загружен!');
       }catch(err){notice('Ошибка онлайн-аккаунта: '+err.message,true)}
+      finally{if(button&&button.isConnected)button.disabled=false}
     }
     function disconnectCloud(){
       cloudActive=false;cloudToken='';cloudName='';cloudDirty=false;
@@ -1478,7 +1496,7 @@
     function cloudProfile(){
       let html='<div class="section-head"><h2>☁️ Онлайн-аккаунт</h2></div><div class="card">';
       if(cloudActive){
-        html+='<strong>🟢 Подключён: '+escapeHtml(cloudName)+'</strong><p class="small muted">Прогресс синхронизируется. Только подключённым игрокам администратор может отправлять деньги и персональные сделки.</p>';
+        html+='<strong>🟢 Подключён: '+escapeHtml(cloudName)+'</strong><p class="small muted">Прогресс синхронизируется между устройствами. '+(cloudDirty?'⏳ Есть изменения, ожидающие отправки.':'✓ Облачное сохранение активно.')+'</p>';
         html+='<button class="btn btn-primary btn-block" data-action="cloud-refresh">Проверить обновления</button>';
         html+='<button class="btn btn-outline btn-block" style="margin-top:9px" data-action="cloud-disconnect">Отключить онлайн-аккаунт</button>';
       }else{
@@ -1903,7 +1921,8 @@
       }finally{hideSplash()}
     }
     if('serviceWorker' in navigator&&location.protocol==='https:'){navigator.serviceWorker.register('./sw.js').catch(()=>{})}
-    document.addEventListener('visibilitychange',()=>{if(!document.hidden){checkMaintenance();tickMarket();tickBuyers()}});
+    document.addEventListener('visibilitychange',()=>{if(!document.hidden){checkMaintenance();tickMarket();tickBuyers();if(cloudActive){if(cloudDirty)flushCloudSave();else checkCloud(false)}}else if(cloudActive&&cloudDirty)flushCloudSave()});
+    window.addEventListener?.('online',()=>{if(cloudActive){if(cloudDirty)flushCloudSave();else checkCloud(false)}});
     setInterval(()=>{checkMaintenance()},45000);
     setInterval(()=>{if(cloudActive&&!document.hidden)checkCloud(false)},25000);
     setInterval(()=>{if(!document.hidden){tickMarket();tickBuyers()}},1000);
