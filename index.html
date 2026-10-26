@@ -1287,7 +1287,7 @@
         }
         case 'level':
           if(!validInt(n,1,1000))return false;
-          game.xp=(n-1)*180;detail='Уровень игрока: '+n;break;
+          game.xp=xpForLevel(n);game.xpCurveV2=1;detail='Уровень игрока: '+n;break;
         case 'garage':
           if(!validInt(n,0,GARAGES.length-1))return false;
           game.garageTier=n;
