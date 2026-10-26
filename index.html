@@ -410,8 +410,8 @@
       'Mitsubishi 3000GT':[1990,1999],'Mazda RX-7 FD':[1992,2002],'Subaru Impreza WRX GD':[2000,2007]});
     const PAINTS=[['#7babb0','Серебристый'],['#c5d2d2','Белый'],['#293745','Графит'],['#c94f48','Красный'],['#4777b0','Синий'],['#c7aa71','Бежевый'],['#48816c','Зелёный'],['#1f262b','Чёрный']];
     const DEFECTS=[{id:'engine',title:'Проблемы с двигателем',ratio:.13,boost:23},{id:'gearbox',title:'Неисправная коробка',ratio:.105,boost:21},{id:'body',title:'Повреждения кузова',ratio:.075,boost:17},{id:'electric',title:'Электрика и датчики',ratio:.046,boost:15},{id:'suspension',title:'Изношенная подвеска',ratio:.068,boost:17},{id:'brakes',title:'Тормозная система',ratio:.038,boost:14}];
-    const GARAGES=[{name:'Старый гараж',slots:2,price:0,desc:'Тесный бокс с двумя местами'},{name:'Гараж с пристройкой',slots:4,price:210000,desc:'Можно держать 4 машины'},{name:'Автобокс',slots:7,price:670000,desc:'Склад и 7 машиномест'},{name:'Автоцентр',slots:10,price:1720000,desc:'Просторное помещение для 10 авто'},{name:'Автокомплекс',slots:16,price:4200000,desc:'16 машиномест и зона выдачи'}];
-    const WORKSHOPS=[{name:'Без своей СТО',price:0,discount:0,desc:'Ремонт у сторонних механиков'},{name:'Свой подъёмник',price:290000,discount:.14,desc:'Снижает стоимость всех работ на 14%'},{name:'Полноценная СТО',price:860000,discount:.29,desc:'Скидка на ремонт 29% и собственная мастерская'},{name:'СТО премиум',price:2100000,discount:.44,desc:'Скидка 44% благодаря современному оборудованию'}];
+    const GARAGES=[{name:'Старый гараж',slots:2,price:0,desc:'Тесный бокс с двумя местами'},{name:'Гараж с пристройкой',slots:4,price:310000,desc:'Можно держать 4 машины'},{name:'Автобокс',slots:7,price:950000,desc:'Склад и 7 машиномест'},{name:'Автоцентр',slots:10,price:2550000,desc:'Просторное помещение для 10 авто'},{name:'Автокомплекс',slots:16,price:6200000,desc:'16 машиномест и зона выдачи'}];
+    const WORKSHOPS=[{name:'Без своей СТО',price:0,discount:0,desc:'Ремонт у сторонних механиков'},{name:'Свой подъёмник',price:420000,discount:.14,desc:'Снижает стоимость всех работ на 14%'},{name:'Полноценная СТО',price:1350000,discount:.29,desc:'Скидка на ремонт 29% и собственная мастерская'},{name:'СТО премиум',price:3200000,discount:.44,desc:'Скидка 44% благодаря современному оборудованию'}];
     const SERVICES=[{id:'service',name:'Техническое обслуживание',short:'ТО',desc:'Масла, фильтры, проверка узлов · +9 к состоянию',ratio:.025,boost:9},{id:'detail',name:'Химчистка салона',short:'Салон',desc:'Чистота и предпродажная подготовка · +6',ratio:.013,boost:6},{id:'paint',name:'Полировка и косметика',short:'Кузов',desc:'Устранить потёртости и освежить ЛКП · +11',ratio:.04,boost:11},{id:'tune',name:'Улучшение комплектации',short:'Тюнинг',desc:'Мультимедиа и комфорт · прибавка к цене +6%',ratio:.05,boost:0}];
     const MISSION_POOL=[{kind:'buy',goal:1,title:'Заключи сделку',text:'Купи 1 автомобиль',reward:27000},{kind:'inspect',goal:2,title:'Проверка документов',text:'Проведи 2 диагностики автомобилей',reward:16000},{kind:'fix',goal:1,title:'Мастер на все руки',text:'Проведи 1 ремонт или обслуживание',reward:23000},{kind:'sell',goal:1,title:'Счастливый покупатель',text:'Продай 1 автомобиль',reward:37000},{kind:'buy',goal:2,title:'Пополнить автопарк',text:'Купи 2 автомобиля',reward:44000},{kind:'fix',goal:3,title:'Работа кипит',text:'Сделай 3 операции в мастерской',reward:46000},{kind:'day',goal:3,title:'Рабочая неделя',text:'Проведи 3 игровых дня',reward:25000},{kind:'sell',goal:2,title:'Удачный оборот',text:'Продай 2 машины',reward:68000}];
     const ICONS={world:'<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18"/>',profile:'<circle cx="12" cy="8" r="4"/><path d="M4 21v-2a8 8 0 0 1 16 0v2"/>',home:'<path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"/>',market:'<path d="M5 17h14l-1.2-5.2a2 2 0 0 0-2-1.6H8.2a2 2 0 0 0-2 1.6L5 17Zm0 0v2m14-2v2M7 10l1.2-4h7.6l1.2 4M3 17h18M7 14h.01M17 14h.01"/>',garage:'<path d="M3 21V8l9-5 9 5v13M3 10h18M7 21v-8h10v8M7 17h10"/>',tools:'<path d="M14.7 6.3a4 4 0 0 0-5 5L4 17l3 3 5.7-5.7a4 4 0 0 0 5-5L15 12l-3-3z"/>',career:'<path d="M4 20h16M6 16v-5h4v5M10 16V6h4v10M14 16V9h4v7M8 3h8"/>',arrow:'<path d="M5 12h14m-6-6 6 6-6 6"/>',check:'<path d="m4 12 5 5L20 6"/>',plus:'<path d="M12 5v14M5 12h14"/>',clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',heart:'<path d="M20.8 4.8a5.5 5.5 0 0 0-7.8 0L12 5.8l-1-1a5.5 5.5 0 1 0-7.8 7.8L12 21l8.8-8.4a5.5 5.5 0 0 0 0-7.8Z"/>',alert:'<path d="m12 3 10 18H2L12 3ZM12 9v5m0 3h.01"/>'};
@@ -422,6 +422,14 @@
     const num=n=>Math.round(n).toLocaleString('ru-RU');
     const model=o=>MODELS[o.modelId]||MODELS[0];
     const carName=o=>model(o)[0]+' '+model(o)[1];
+    function xpForLevel(level){const n=clamp(Math.floor(Number(level)||1)-1,0,999);return n*360+n*(n-1)*15}
+    function levelFromXp(total){let n=1;while(n<1000&&xpForLevel(n+1)<=Math.max(0,Number(total)||0))n++;return n}
+    function currentLevel(){return levelFromXp(game.xp)}
+    function levelProgress(){const l=currentLevel(),lo=xpForLevel(l),hi=xpForLevel(l+1);return {level:l,earned:game.xp-lo,need:hi-lo}}
+    const LEVEL_UNLOCKS={garage:[1,3,6,10,15],workshop:[1,4,8,14],showroom:[1,8,12,20],partsMarket:6};
+    function canUpgrade(kind,nextTier){return currentLevel()>=(LEVEL_UNLOCKS[kind]?.[nextTier]??9999)}
+    function gateMessage(kind,nextTier){return '🔒 Требуется уровень '+(LEVEL_UNLOCKS[kind]?.[nextTier]||1)}
+    function migrateExperience(){if(game.xpCurveV2===1)return;const old=Math.max(0,Number(game.xp)||0),lvl=clamp(Math.floor(old/180)+1,1,1000),part=(old%180)/180;game.xp=Math.floor(xpForLevel(lvl)+part*(xpForLevel(lvl+1)-xpForLevel(lvl)));game.xpCurveV2=1}
     const capacity=()=>GARAGES[game.garageTier].slots+(game.extraGarageSlots||0);
     const ico=(name,cls='ic')=>`<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[name]||ICONS.home}</svg>`;
     let game,tab='home',modal=null,marketFilter='all',searchTerm='',chosenPrice={},lastToastTimer=0;
@@ -461,7 +469,7 @@
     /* Большое обновление «Мир перекупа»: все данные живут внутри старого сохранения v1. */
     const STAFF_INFO={mechanic:{name:'Механик',hire:85000,salary:4500,perk:'−8% к стоимости ремонта',icon:'🔧'},sales:{name:'Менеджер',hire:110000,salary:5500,perk:'+10% к шансу покупателя',icon:'🤝'},expert:{name:'Эксперт по VIN',hire:75000,salary:4000,perk:'−50% к цене VIN-проверки',icon:'🔍'}};
     const PARTS={engine:{label:'Двигатель',price:35000},body:{label:'Кузовные детали',price:15000},electric:{label:'Электрика',price:12000}};
-    const SHOWROOMS=[{name:'Гараж без витрины',cost:0,bonus:0},{name:'Выставочная площадка',cost:380000,bonus:.035},{name:'Автосалон',cost:1450000,bonus:.07},{name:'Премиальный автоцентр',cost:4200000,bonus:.105}];
+    const SHOWROOMS=[{name:'Гараж без витрины',cost:0,bonus:0},{name:'Выставочная площадка',cost:1150000,bonus:.035},{name:'Автосалон',cost:4200000,bonus:.07},{name:'Премиальный автоцентр',cost:10500000,bonus:.105}];
     const RARE_NAMES=['Nissan Skyline GT-R','Toyota Supra','BMW M5','Porsche 911','Porsche 718','Ford Mustang','Mercedes-Benz G-Class','Audi RS6','Subaru WRX STI','BMW M3','Tesla Model','Lexus LX'];
     const ORDER_NAMES=['Николай','Анна','Сергей','Денис','Валерия','Роман','Павел','Алексей'];
     const RIVAL_NAMES=['Макс Автобосс','Кирилл Перекуп','AutoDrive Crew'];
@@ -470,6 +478,7 @@
       if(!Array.isArray(game.orders))game.orders=[];
       if(!Array.isArray(game.rivals))game.rivals=RIVAL_NAMES.map(name=>({name,deals:rand(2,9),budget:rand(1,8)*450000}));
       if(!Array.isArray(game.collection))game.collection=[];
+      migrateExperience();
       if(!Array.isArray(game.staff))game.staff=[];
       game.extraGarageSlots=clamp(Math.floor(Number(game.extraGarageSlots)||0),0,100);
       if(!game.parts||typeof game.parts!=='object')game.parts={engine:0,body:0,electric:0};
@@ -624,6 +633,7 @@
     function improveShowroom(){
       const next=SHOWROOMS[game.showroomTier+1];if(!next)return;
       if(game.garageTier<2)return notice('Сначала развей гараж до уровня 3.',true);
+      if(!canUpgrade('showroom',game.showroomTier+1))return notice(gateMessage('showroom',game.showroomTier+1),true);
       if(!changeCash(-next.cost))return notice('Недостаточно денег для автосалона.',true);
       game.showroomTier++;xp(60);rep(3);log('🏢','Улучшен автосалон',next.name+' · '+fmt(next.cost));save();render();notice('Открыто: '+next.name);
     }
@@ -818,7 +828,7 @@
     function missionsInit(){return [0,1,2].map(i=>({...MISSION_POOL[i],uid:i,progress:0,done:false}));}
     function newGame(){
       nextId=1;
-      game={version:1,profile:{nickname:'Перекуп',description:'Покупаю, привожу в порядок и продаю автомобили.',avatar:'🚗'},reviews:[],money:1150000,day:1,xp:0,rep:26,garageTier:0,workshopTier:0,inventory:[],market:[],sold:0,totalProfit:0,turnover:0,spent:0,earned:0,madeDeals:0,repairs:0,inspections:0,missions:missionsInit(),history:[{day:1,icon:'👋',title:'Добро пожаловать в перекуп!',detail:'Стартовый капитал — 1 150 000 ₽. Начни с первой сделки.'}],lastEvent:'',sounds:true};
+      game={version:1,profile:{nickname:'Перекуп',description:'Покупаю, привожу в порядок и продаю автомобили.',avatar:'🚗'},reviews:[],money:1150000,day:1,xp:0,rep:26,garageTier:0,workshopTier:0,inventory:[],market:[],sold:0,totalProfit:0,turnover:0,spent:0,earned:0,madeDeals:0,repairs:0,inspections:0,missions:missionsInit(),history:[{day:1,icon:'👋',title:'Добро пожаловать в перекуп!',detail:'Стартовый капитал — 1 150 000 ₽. Начни с первой сделки.'}],lastEvent:'',sounds:true,xpCurveV2:1};
       newMarket();migrateWorld();game.marketRefreshAt=Date.now()+MARKET_INTERVAL_MS;save();
     }
     function save(){localSave();queueCloudSave()}
@@ -942,7 +952,7 @@
         <div class="car-actions"><button class="btn ${wanted?'btn-primary':'btn-secondary'}" data-action="${owned?'open-car':'open-offer'}" data-id="${o.id}">${wanted?'💸 Ответить':owned?'Управлять →':'Осмотреть →'}</button></div></div></article>`;
     }
     function paintBar(val){return `<div class="bar"><div style="width:${clamp(val,0,100)}%"></div></div>`}
-    function header(){return `<header><div class="brand"><div class="brandmark">${ico('market','ic')}</div><div><h1>ПЕРЕКУП</h1><small>СИМУЛЯТОР БИЗНЕСА</small></div></div><div class="header-right"><button class="theme-shortcut" data-action="themes" aria-label="Настройки темы" title="Сменить тему">🎨</button><span class="levelpill">LVL ${Math.floor(game.xp/180)+1}</span><span class="daypill">День ${game.day}</span></div></header>`}
+    function header(){return `<header><div class="brand"><div class="brandmark">${ico('market','ic')}</div><div><h1>ПЕРЕКУП</h1><small>СИМУЛЯТОР БИЗНЕСА</small></div></div><div class="header-right"><button class="theme-shortcut" data-action="themes" aria-label="Настройки темы" title="Сменить тему">🎨</button><span class="levelpill">LVL ${currentLevel()}</span><span class="daypill">День ${game.day}</span></div></header>`}
     function home(){
       const best=[...game.market].filter(x=>x.price<=game.money&&game.inventory.length<capacity()).sort((a,b)=>a.price/fair(a)-b.price/fair(b))[0];
       const pending=game.inventory.filter(x=>x.buyerOffer);
@@ -1402,10 +1412,10 @@
     const reviewTexts={"2":["После покупки появились дополнительные расходы.","Автомобиль потребовал ремонта, впечатления смешанные."],"3":["Машина нормальная, но пришлось кое-что доделать.","Ожидал чуть лучшего состояния. В целом ездит.","Есть вопросы по мелочам, но цена устроила."],"4":["В целом всё хорошо, автомобиль понравился.","Сделка прошла нормально, есть мелочи по состоянию.","Хорошая машина за свою цену.","Продавец отвечал быстро. Покупкой доволен."],"5":["Очень доволен покупкой! Машина соответствует описанию.","Быстро договорились, автомобиль отличный. Спасибо!","Классная сделка, всё честно и без лишних вопросов.","Забрал машину — всё работает, рекомендую продавца!"]};
 
     function career(){
-      const lvl=Math.floor(game.xp/180)+1, xpIn=game.xp%180;
+      const xpData=levelProgress(),lvl=xpData.level,xpIn=xpData.earned;
       const achievements=[['🥇','Первая продажа','Продай первую машину',game.sold>=1],['💰','Миллионер','Заработай 1 млн ₽ прибыли',game.totalProfit>=1000000],['🔧','Владелец СТО','Открой полноценную СТО',game.workshopTier>=2],['🏁','Легенда рынка','Продай 10 автомобилей',game.sold>=10],['🅿️','Автопарк','Открой 10 машиномест',capacity()>=10],['🤝','Доверие','Набери репутацию 80/100',game.rep>=80]];
       return `<main><h2 class="page-title">Карьера перекупа</h2><p class="subtitle">Выполняй контракты, получай премии и становись королём авторынка.</p>
-      <div class="hero"><div class="row"><div><div class="label">Репутация на рынке</div><div class="balance" style="font-size:32px;margin-bottom:0">${game.rep}<span>/100</span></div></div><div style="font-size:33px">${game.rep>=80?'👑':game.rep>=50?'⭐':'🤝'}</div></div>${paintBar(game.rep)}<div class="divider"></div><div class="row"><div><strong>Уровень ${lvl}</strong><div class="small muted" style="margin-top:4px">Опыт ${xpIn}/180 до нового уровня</div></div><span class="chip green">+ скидки при торге</span></div>${paintBar(xpIn/180*100)}</div>
+      <div class="hero"><div class="row"><div><div class="label">Репутация на рынке</div><div class="balance" style="font-size:32px;margin-bottom:0">${game.rep}<span>/100</span></div></div><div style="font-size:33px">${game.rep>=80?'👑':game.rep>=50?'⭐':'🤝'}</div></div>${paintBar(game.rep)}<div class="divider"></div><div class="row"><div><strong>Уровень ${lvl}</strong><div class="small muted" style="margin-top:4px">Опыт ${xpIn}/${xpData.need} до нового уровня</div></div><span class="chip green">+ скидки при торге</span></div>${paintBar(xpIn/xpData.need*100)}</div>
       <div class="section-head"><h2>📋 Контракты</h2><span class="hint">Награды за задания</span></div><div class="card">${game.missions.map(m=>`<div class="mission"><div class="row"><div><strong>${m.title}</strong><p>${m.text}</p></div><span class="reward">+${fmt(m.reward)}</span></div><div class="row" style="margin-top:7px"><span class="small muted">${m.progress}/${m.goal}</span>${m.progress>=m.goal?`<button class="btn btn-primary btn-small" data-action="claim-mission" data-id="${m.uid}">Забрать</button>`:'<span class="small muted">В процессе</span>'}</div>${paintBar(m.progress/m.goal*100)}</div>`).join('')}</div>
       <div class="section-head"><h2>🏅 Достижения</h2><span class="hint">${achievements.filter(x=>x[3]).length}/${achievements.length}</span></div><div class="achievements">${achievements.map(([em,title,desc,ok])=>`<div class="achievement ${ok?'':'locked'}"><div class="emoji">${ok?em:'🔒'}</div><strong>${title}</strong><span>${desc}</span></div>`).join('')}</div>
       <div class="section-head"><h2>📈 Финансы</h2></div><div class="card"><div class="row"><span class="muted">Оборот по продажам</span><strong>${fmt(game.turnover)}</strong></div><div class="divider"></div><div class="row"><span class="muted">Чистая прибыль по сделкам</span><strong class="${game.totalProfit>=0?'good':'bad'}">${fmt(game.totalProfit)}</strong></div><div class="divider"></div><div class="row"><span class="muted">Всего куплено</span><strong>${game.madeDeals} авто</strong></div><div class="divider"></div><div class="row"><span class="muted">Работ в мастерской</span><strong>${game.repairs}</strong></div></div>
@@ -1601,7 +1611,7 @@
       else{nextBuyerInQueue(o);log('🚶','Покупатель ушёл',carName(o)+' · торг не удался');notice('Покупатель отказался и ушёл.',true)}save();render();
     }
     function claimMission(uid){const m=game.missions.find(x=>x.uid===Number(uid));if(!m||m.progress<m.goal)return;changeCash(m.reward);xp(30);rep(2);log('🎯','Контракт выполнен!',m.title+' · награда '+fmt(m.reward));const idx=game.missions.indexOf(m);const newIndex=rand(0,MISSION_POOL.length-1);game.missions[idx]={...MISSION_POOL[newIndex],uid:id(),progress:0,done:false};save();render();notice('🎯 Получено '+fmt(m.reward)+'!')}
-    function upgrade(type){const arr=type==='garage'?GARAGES:WORKSHOPS,key=type==='garage'?'garageTier':'workshopTier',next=arr[game[key]+1];if(!next)return;if(!changeCash(-next.price))return notice('Недостаточно денег!',true);game[key]++;xp(40);rep(3);log('🏗️','Бизнес расширяется!',next.name+' · '+fmt(next.price));save();closeModal();render();notice('🎉 Открыто: '+next.name)}
+    function upgrade(type){const arr=type==='garage'?GARAGES:WORKSHOPS,key=type==='garage'?'garageTier':'workshopTier',next=arr[game[key]+1];if(!next)return;if(!canUpgrade(type,game[key]+1))return notice(gateMessage(type,game[key]+1),true);if(!changeCash(-next.price))return notice('Недостаточно денег!',true);game[key]++;xp(40);rep(3);log('🏗️','Бизнес расширяется!',next.name+' · '+fmt(next.price));save();closeModal();render();notice('🎉 Открыто: '+next.name)}
     async function exportGame(){const data=JSON.stringify({game,nextId,exportedAt:new Date().toISOString()},null,2);try{const blob=new Blob([data],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='perekup-save-day-'+game.day+'.json';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),2500);notice('Резервная копия создана!')}catch(e){notice('Не удалось создать файл.',true)}}
     function action(type,button){const i=button.dataset.id,v=button.dataset.value;
       if(type==='retry-maintenance'){checkMaintenance().then(closed=>{if(!closed&&!gameStarted)startGame()});return;}
