@@ -1112,7 +1112,7 @@
     function market(){
       const filtered=marketFiltered();
       return `<main><h2 class="page-title">Авторынок <span style="color:var(--lime)">24/7</span></h2><p class="subtitle">Выбирай машину, проверяй скрытые дефекты и выбивай лучшую цену.</p>
-      <div class="row" style="margin:10px 0 14px"><button class="btn btn-secondary btn-block" data-action="go" data-value="world">🔨 Аукционы и заказы клиентов →</button></div>
+      <div class="row" style="margin:10px 0 14px"><button class="btn btn-secondary btn-block" data-action="go" data-value="world">🔨 Аукционы и заказы клиентов →</button></div><button class="btn btn-outline btn-block" style="margin:0 0 12px" data-action="open-parts-market">🧰 Рынок запчастей и свапы · с 6 уровня →</button>
        <div class="notice"><div class="symbol">💡</div><div><strong>Совет перекупа</strong><p>Сперва проведи диагностику. Дорогой ремонт может съесть всю прибыль от сделки.</p></div></div>
       <div class="row" style="margin:17px 0 10px"><div><strong id="market-count">${game.market.length} объявлений</strong><div class="small muted" id="market-countdown">Новые авто через ${marketSecondsRemaining()} сек.</div></div><button class="btn btn-outline btn-small" data-action="next-day">Новый день →</button></div>
       <input id="search-model" class="search-box" type="search" placeholder="🔎 Поиск марки или модели" value="${escapeHtml(searchTerm)}" autocomplete="off" aria-label="Поиск автомобиля">
@@ -1154,7 +1154,7 @@
        <div class="section-head"><h2>🚚 Закупка у поставщиков</h2><span class="hint">Оптовые цены</span></div>
        ${game.dealerSupply.map(o=>`<div class="card" style="margin-bottom:10px"><div class="row"><div><strong>${carName(o)}</strong><div class="small muted">${o.year} г. · ${num(o.mileage)} км · ${o.condition}/100</div><div class="small muted">Рыночная цена ~${fmt(fair(o))}</div><strong class="good">${fmt(o.price)}</strong></div><button class="btn btn-primary btn-small" data-action="buy-dealer" data-id="${o.id}" ${game.inventory.length>=capacity()||game.money<o.price?'disabled':''}>Выкупить</button></div></div>`).join('')}
        `}
-      <div class="section-head"><h2>🛒 Рынок запчастей и свапов</h2><span class="hint">С уровня ${LEVEL_UNLOCKS.partsMarket}</span></div>
+      <div class="section-head" id="parts-market-section"><h2>🛒 Рынок запчастей и свапов</h2><span class="hint">С уровня ${LEVEL_UNLOCKS.partsMarket}</span></div>
       ${currentLevel()<LEVEL_UNLOCKS.partsMarket?`<div class="notice orange"><div class="symbol">🔒</div><div><strong>Рынок закрыт до ${LEVEL_UNLOCKS.partsMarket} уровня</strong><p>Поднимай опыт продажами, ремонтами и контрактами, чтобы покупать запчасти и двигатели со скидками.</p></div></div>`:`
        <div class="notice"><div class="symbol">🧰</div><div><strong>Цены ниже обычных</strong><p>Предложения обновляются каждую минуту. Купленные запчасти и комплекты сохраняются на складе. Для свапа нужен хотя бы свой подъёмник (СТО этап 2).</p></div></div>
        ${game.partsMarketOffers.map(lot=>`<div class="card" style="margin-bottom:9px"><div class="row"><div><strong>${lot.kind==='swap'?'🏎️':'🔧'} ${escapeHtml(lot.label)}</strong><div class="small muted"><del>${fmt(lot.normal)}</del> · остаток ${lot.stock} шт.</div><div class="small good">${fmt(lot.price)}</div></div><button class="btn btn-primary btn-small" data-action="buy-part-market" data-id="${lot.id}" ${lot.stock<1||game.money<lot.price?'disabled':''}>Купить</button></div></div>`).join('')}
@@ -1798,6 +1798,7 @@
       if(type==='vin-offer')return vinCheck(i,false);
       if(type==='vin-owned')return vinCheck(i,true);
       if(type==='go')return showTab(v);
+      if(type==='open-parts-market'){showTab('tools');const element=document.getElementById('parts-market-section');if(element)element.scrollIntoView({block:'start',behavior:'smooth'});return}
       if(type==='cloud-register')return cloudAuth(true);
       if(type==='cloud-login')return cloudAuth(false);
       if(type==='cloud-disconnect')return disconnectCloud();
